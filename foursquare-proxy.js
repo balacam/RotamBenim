@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3001;
 
 // Güvenli şekilde .env'den veya buradan anahtar alınabilir
 env = process.env;
-const FOURSQUARE_API_KEY = env.FOURSQUARE_API_KEY || 'JOU3DLQL13TMVPJANZOG10AAJJKRCCYG0CW3HDSWTIIJ45ZD';
+const FOURSQUARE_API_KEY = env.FOURSQUARE_API_KEY || 'WAYRDBNFPOVH42C03JADZRRTJBB2GPQCZEEUIIFD1BKDZPA2';
 
 app.use(cors());
 
