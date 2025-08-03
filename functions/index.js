@@ -48,34 +48,116 @@ exports.foursquare = functions.https.onRequest(async (req, res) => {
   const query = req.query.query;
   if (!query) return res.status(400).json({ error: "query param required" });
   
-  console.log('Foursquare API çağrısı:', query);
+  console.log('Mock API çağrısı:', query);
   
-  try {
-    const url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&limit=20&fields=fsq_id,name,location,categories,description,rating`;
-    console.log('Foursquare URL:', url);
-    
-    const resp = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
+  // Mock data ile test (gerçek API çalışana kadar)
+  const mockData = {
+    results: [
+      {
+        fsq_id: "berlin1",
+        name: "Brandenburg Gate",
+        location: {
+          country: "Germany",
+          formatted_address: "Pariser Platz, 10117 Berlin, Germany"
+        },
+        categories: [{ name: "Historic Site" }],
+        description: "Berlin'in en ünlü simgesi olan Brandenburg Kapısı"
       },
-    });
-    
-    console.log('Foursquare response status:', resp.status);
-    
-    if (!resp.ok) {
-      console.error('Foursquare API error:', resp.status, resp.statusText);
-      return res.status(resp.status).json({ error: `Foursquare API error: ${resp.status}` });
-    }
-    
-    const data = await resp.json();
-    console.log('Foursquare response data:', JSON.stringify(data, null, 2));
-    
-    res.json(data);
-  } catch (err) {
-    console.error('Foursquare API catch error:', err);
-    res.status(500).json({ error: err.message });
-  }
+      {
+        fsq_id: "berlin2", 
+        name: "Berlin Wall Memorial",
+        location: {
+          country: "Germany",
+          formatted_address: "Bernauer Str. 111, 13355 Berlin, Germany"
+        },
+        categories: [{ name: "Historic Site" }],
+        description: "Berlin Duvarı Anıtı ve müzesi"
+      },
+      {
+        fsq_id: "berlin3",
+        name: "Reichstag Building",
+        location: {
+          country: "Germany", 
+          formatted_address: "Platz der Republik 1, 11011 Berlin, Germany"
+        },
+        categories: [{ name: "Government Building" }],
+        description: "Alman Parlamentosu'nun bulunduğu tarihi bina"
+      },
+      {
+        fsq_id: "berlin4",
+        name: "Museum Island",
+        location: {
+          country: "Germany",
+          formatted_address: "Museumsinsel, 10117 Berlin, Germany"
+        },
+        categories: [{ name: "Museum" }],
+        description: "UNESCO Dünya Mirası listesinde yer alan müze adası"
+      },
+      {
+        fsq_id: "berlin5",
+        name: "Checkpoint Charlie",
+        location: {
+          country: "Germany",
+          formatted_address: "Friedrichstraße 43-45, 10117 Berlin, Germany"
+        },
+        categories: [{ name: "Historic Site" }],
+        description: "Soğuk Savaş döneminin en ünlü sınır kapısı"
+      },
+      {
+        fsq_id: "berlin6",
+        name: "Tiergarten Park",
+        location: {
+          country: "Germany",
+          formatted_address: "Tiergarten, 10785 Berlin, Germany"
+        },
+        categories: [{ name: "Park" }],
+        description: "Berlin'in kalbinde yer alan 210 hektarlık büyük park"
+      },
+      {
+        fsq_id: "berlin7",
+        name: "Potsdamer Platz",
+        location: {
+          country: "Germany",
+          formatted_address: "Potsdamer Platz, 10117 Berlin, Germany"
+        },
+        categories: [{ name: "Shopping Center" }],
+        description: "Modern Berlin'in kalbi olan bu meydan"
+      },
+      {
+        fsq_id: "berlin8",
+        name: "Berlin Cathedral",
+        location: {
+          country: "Germany",
+          formatted_address: "Am Lustgarten, 10178 Berlin, Germany"
+        },
+        categories: [{ name: "Religious Site" }],
+        description: "Spree Nehri kıyısında yer alan görkemli Protestan katedrali"
+      },
+      {
+        fsq_id: "berlin9",
+        name: "Alexanderplatz",
+        location: {
+          country: "Germany",
+          formatted_address: "Alexanderplatz, 10178 Berlin, Germany"
+        },
+        categories: [{ name: "Square" }],
+        description: "Berlin'in en büyük meydanlarından biri"
+      },
+      {
+        fsq_id: "berlin10",
+        name: "Charlottenburg Palace",
+        location: {
+          country: "Germany",
+          formatted_address: "Spandauer Damm 10-22, 14059 Berlin, Germany"
+        },
+        categories: [{ name: "Palace" }],
+        description: "Berlin'in en büyük sarayı ve Prusya kraliyet ailesinin eski ikametgahı"
+      }
+    ]
+  };
+  
+  console.log('Mock data döndürülüyor:', mockData);
+  res.json(mockData);
 });
 
 // Test endpoint
