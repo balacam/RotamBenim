@@ -1,0 +1,84 @@
+{
+  "places": [
+    {
+      "name": "Yasak Şehir",
+      "city": "Beijing",
+      "country": "Çin",
+      "category": "Saray",
+      "description": "Ming ve Qing hanedanlarının 500 yıl boyunca yaşadığı görkemli saray kompleksi. 9999 odası ile dünyanın en büyük saray kompleksi.",
+      "visited": false
+    },
+    {
+      "name": "Çin Seddi",
+      "city": "Beijing",
+      "country": "Çin",
+      "category": "Tarihi Yapı",
+      "description": "Dünyanın en uzun yapısı olan Çin Seddi'nin Beijing yakınlarındaki bölümü. 2000 yıllık bu muhteşem savunma yapısı, uzaydan görülebilen tek yapı.",
+      "visited": false
+    },
+    {
+      "name": "Bund",
+      "city": "Shanghai",
+      "country": "Çin",
+      "category": "Sahil",
+      "description": "Shanghai'ın simgesi olan sahil şeridi. Art Deco binaları ve modern gökdelenler arasındaki kontrast, şehrin geçmişi ve geleceğini yansıtır.",
+      "visited": false
+    },
+    {
+      "name": "Oriental Pearl Tower",
+      "city": "Shanghai",
+      "country": "Çin",
+      "category": "Kule",
+      "description": "468 metre yüksekliğindeki futuristik televizyon kulesi. Shanghai'ın modern simgesi olan bu kule, şehrin panoramik manzarasını sunar.",
+      "visited": false
+    },
+    {
+      "name": "Tiananmen Meydanı",
+      "city": "Beijing",
+      "country": "Çin",
+      "category": "Meydan",
+      "description": "Dünyanın en büyük şehir meydanı. Çin'in siyasi merkezi olan bu meydan, önemli devlet törenlerinin yapıldığı yer.",
+      "visited": false
+    },
+    {
+      "name": "Cennet Tapınağı",
+      "city": "Beijing",
+      "country": "Çin",
+      "category": "Tapınak",
+      "description": "Ming ve Qing imparatorlarının cennet için dua ettiği dairesel tapınak. Geleneksel Çin mimarisinin en güzel örneği.",
+      "visited": false
+    },
+    {
+      "name": "Yu Garden",
+      "city": "Shanghai",
+      "country": "Çin",
+      "category": "Bahçe",
+      "description": "Ming hanedanı döneminden kalma geleneksel Çin bahçesi. Pavyonlar, göletler ve kayalar ile Çin bahçe sanatının mükemmel örneği.",
+      "visited": false
+    },
+    {
+      "name": "Yaz Sarayı",
+      "city": "Beijing",
+      "country": "Çin",
+      "category": "Saray",
+      "description": "İmparatorluk ailesinin yaz ikametgahı. Kunming Gölü ve muhteşem bahçeleriyle Çin bahçe sanatının en güzel örneği.",
+      "visited": false
+    },
+    {
+      "name": "Shanghai Tower",
+      "city": "Shanghai",
+      "country": "Çin",
+      "category": "Gökdelen",
+      "description": "632 metre yüksekliğinde Çin'in en yüksek binası. Spiral tasarımı ve sürdürülebilir mimarisiyle modern mühendisliğin harikası.",
+      "visited": false
+    },
+    {
+      "name": "Lama Tapınağı",
+      "city": "Beijing",
+      "country": "Çin",
+      "category": "Tapınak",
+      "description": "Beijing'in en önemli Budist tapınağı. Tibet Budizmi'nin merkezi olan bu tapınak, renkli mimarisi ve huzurlu atmosferiyle ünlü.",
+      "visited": false
+    }
+  ]
+}

@@ -274,7 +274,6 @@
             
             <!-- Filtreler -->
             <div id="filters" style="display: flex; gap: 16px; justify-content: flex-start; align-items: center; margin-bottom: 18px; margin-top: 18px; position: relative;">
-              <label for="countryFilter">Ülke:</label>
               <select id="countryFilter" style="min-width: 140px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
               <label for="visitedFilter">Ziyaret:</label>
               <select id="visitedFilter" style="min-width: 120px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
@@ -282,14 +281,22 @@
                 <option value="visited">Gezildi</option>
                 <option value="notvisited" selected>Gezilmedi</option>
               </select>
-              <label for="searchBox">Yeni Yer:</label>
               <input id="searchBox" class="form-control awesomplete" type="text" placeholder="Yeni yer adı..." style="min-width: 180px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;" autocomplete="off" />
               <button id="addPlaceBtn" style="padding: 6px 18px; border-radius: 6px; border: none; background: #206bc4; color: white; font-weight: 500; cursor: pointer;">Ekle</button>
+              
+              <input id="locationSuggestionBox" type="text" placeholder="Şehir veya ülke adı..." style="min-width: 180px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; margin-left: 15px;" autocomplete="off" list="locationSuggestions" />
+              <datalist id="locationSuggestions">
+                <!-- Dinamik öneriler buraya eklenecek -->
+              </datalist>
+              <button id="addLocationBtn" style="padding: 6px 18px; border-radius: 6px; border: none; background: #28a745; color: white; font-weight: 500; cursor: pointer;">Turistik Yerleri Ekle</button>
             </div>
             
             <!-- Gezilecek Yerler Tablosu -->
             <div id="placesTableWrapper" class="table-responsive">
               <div id="placesTableContainer" style="margin-top: 0; display: none;">
+                <div style="margin-bottom: 15px; text-align: center;">
+                  <button id="createRouteBtn" style="padding: 8px 20px; border-radius: 6px; border: none; background: #28a745; color: white; font-weight: 500; cursor: pointer; font-size: 14px;">🗺️ Seçili Yerler İçin Rota Oluştur</button>
+                </div>
                 <table id="placesTable" class="table table-sm">
                   <thead>
                     <tr>
@@ -298,6 +305,8 @@
                       <th>Kategori</th>
                       <th>Açıklama</th>
                       <th>Ziyaret Edildi mi?</th>
+                      <th>Rota İçin Seç</th>
+                      <th>Google Maps</th>
                       <th>Sil</th>
                     </tr>
                   </thead>
@@ -316,7 +325,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
-        import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, addDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase configuration
         const firebaseConfig = {
@@ -390,8 +399,47 @@
 
         // Show status message
         function showStatus(message, type = 'info') {
-            // Status mesajları devre dışı bırakıldı
-            return;
+            const statusDiv = document.getElementById('statusMessage');
+            if (!statusDiv) return;
+            
+            // Mesaj tipine göre stil belirle
+            let bgColor, textColor;
+            switch(type) {
+                case 'success':
+                    bgColor = '#d4edda';
+                    textColor = '#155724';
+                    break;
+                case 'error':
+                    bgColor = '#f8d7da';
+                    textColor = '#721c24';
+                    break;
+                case 'info':
+                default:
+                    bgColor = '#d1ecf1';
+                    textColor = '#0c5460';
+                    break;
+            }
+            
+            statusDiv.innerHTML = `
+                <div style="
+                    background-color: ${bgColor};
+                    color: ${textColor};
+                    padding: 10px 15px;
+                    border-radius: 5px;
+                    margin: 10px 0;
+                    border: 1px solid ${textColor}20;
+                    font-size: 14px;
+                ">
+                    ${message}
+                </div>
+            `;
+            
+            // 5 saniye sonra mesajı temizle
+            setTimeout(() => {
+                if (statusDiv) {
+                    statusDiv.innerHTML = '';
+                }
+            }, 5000);
         }
 
         // Handle Google Sign In
@@ -1021,12 +1069,15 @@
           filtered.forEach(data => {
             const row = document.createElement('tr');
             const categoryHtml = (data.category || '').replace(/\s*\/\s*/g, '<br>');
+            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((data.name || '') + ' ' + (data.city || '') + ' ' + (data.country || ''))}`;
             row.innerHTML = `
               <td class="name">${data.name || ''}</td>
               <td>${data.city || ''}</td>
               <td>${categoryHtml}</td>
               <td class="description">${data.description || ''}</td>
               <td style="text-align:center;"><input type="checkbox" class="visited-checkbox" data-docid="${data._docId}" ${data.visited ? 'checked' : ''}></td>
+              <td style="text-align:center;"><input type="checkbox" class="route-checkbox" data-name="${data.name || ''}" data-city="${data.city || ''}" data-country="${data.country || ''}"></td>
+              <td style="text-align:center;"><a href="${googleMapsUrl}" target="_blank" style="background:#4285f4;color:white;border:none;padding:4px 8px;border-radius:5px;text-decoration:none;font-size:12px;">🗺️ Maps</a></td>
               <td style="text-align:center;"><button class="delete-place-btn" data-docid="${data._docId}" style="background:#dc3545;color:white;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;">Sil</button></td>
             `;
             placesTableBody.appendChild(row);
@@ -1067,8 +1118,1071 @@
             });
           });
 
+          // Rota oluşturma butonu event listener
+          const createRouteBtn = document.getElementById('createRouteBtn');
+          if (createRouteBtn) {
+            createRouteBtn.addEventListener('click', () => {
+              createGoogleMapsRoute();
+            });
+          }
+
+          // Şehir/Ülke ekleme butonu event listener
+          const addLocationBtn = document.getElementById('addLocationBtn');
+          if (addLocationBtn) {
+            addLocationBtn.addEventListener('click', () => {
+              addTouristPlacesForLocation();
+            });
+          }
+          
+          // Şehir/Ülke öneri sistemi
+          const locationSuggestionBox = document.getElementById('locationSuggestionBox');
+          const locationSuggestions = document.getElementById('locationSuggestions');
+          
+          if (locationSuggestionBox && locationSuggestions) {
+            locationSuggestionBox.addEventListener('input', function() {
+              const inputValue = this.value.toLowerCase();
+              
+              if (inputValue.length < 2) {
+                locationSuggestions.innerHTML = '';
+                return;
+              }
+              
+              // Şehir ve ülke önerileri listesi
+              const suggestions = [
+                // Popüler şehirler
+                'Aachen', 'Berlin', 'München', 'Hamburg', 'Köln', 'Frankfurt', 'Stuttgart', 'Düsseldorf',
+                'Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Bordeaux', 'Lille', 'Strasbourg',
+                'Roma', 'Milano', 'Napoli', 'Torino', 'Venezia', 'Firenze', 'Bologna', 'Palermo',
+                'Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Bilbao', 'Málaga', 'Zaragoza', 'Murcia',
+                'London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Glasgow', 'Edinburgh', 'Bristol',
+                'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego',
+                'Tokyo', 'Osaka', 'Kyoto', 'Yokohama', 'Nagoya', 'Sapporo', 'Fukuoka', 'Kobe',
+                'Istanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep',
+                // Ülkeler
+                'Germany', 'France', 'Italy', 'Spain', 'United Kingdom', 'United States', 'Japan', 'Turkey',
+                'Netherlands', 'Belgium', 'Switzerland', 'Austria', 'Portugal', 'Greece', 'Poland',
+                'Czech Republic', 'Hungary', 'Romania', 'Bulgaria', 'Croatia', 'Slovakia', 'Slovenia',
+                'Estonia', 'Latvia', 'Lithuania', 'Canada', 'Australia', 'South Korea', 'China', 'India',
+                'Brazil', 'Russia', 'Mexico', 'Argentina'
+              ];
+              
+              // Filtreleme
+              const filteredSuggestions = suggestions.filter(suggestion => 
+                suggestion.toLowerCase().includes(inputValue)
+              ).slice(0, 10); // İlk 10 öneriyi göster
+              
+              // Datalist'i güncelle
+              locationSuggestions.innerHTML = '';
+              filteredSuggestions.forEach(suggestion => {
+                const option = document.createElement('option');
+                option.value = suggestion;
+                locationSuggestions.appendChild(option);
+              });
+            });
+          }
+
           placesTableContainer.style.display = '';
         }
+
+        // Şehir/Ülke için turistik yerler ekleme fonksiyonu
+         async function addTouristPlacesForLocation() {
+           const locationInput = document.getElementById('locationSuggestionBox');
+           const location = locationInput.value.trim();
+           
+           if (!location) {
+             showStatus('Lütfen bir şehir veya ülke adı girin!', 'error');
+             return;
+           }
+           
+           const user = auth.currentUser;
+           if (!user) {
+             showStatus('Lütfen önce giriş yapın!', 'error');
+             return;
+           }
+           
+           try {
+             showStatus(`${location} için turistik yerler araştırılıyor...`, 'info');
+             
+             // Önce şehir kontrolü yap - şehir haritasında var mı?
+             const detectedCountry = detectCountryFromCity(location);
+             if (detectedCountry) {
+               // Bu bir şehir, şehir yerlerini ekle
+               await addCityPlaces(user, location);
+               locationInput.value = '';
+               return;
+             }
+             
+             // Şehir değilse, ülke kontrolü yap
+             const countryData = await checkIfCountryExists(location);
+             if (countryData) {
+               await addCountryPlaces(user, countryData, location);
+               locationInput.value = '';
+               return;
+             }
+             
+             // Ne şehir ne de ülke olarak tanınmıyorsa
+             showStatus(`${location} şehir veya ülke olarak tanınmadı. Lütfen geçerli bir şehir veya ülke adı girin.`, 'error');
+             
+           } catch (error) {
+             console.error('Turistik yerler eklenirken hata:', error);
+             showStatus('Turistik yerler eklenirken bir hata oluştu: ' + error.message, 'error');
+           }
+         }
+         
+         // Ülke kontrolü - dinamik web araştırması ile
+         async function checkIfCountryExists(countryName) {
+           const countryFiles = {
+             'almanya': 'popular-germany.json', 'germany': 'popular-germany.json',
+             'fransa': 'popular-france.json', 'france': 'popular-france.json',
+             'italya': 'popular-italy.json', 'italy': 'popular-italy.json',
+             'ispanya': 'popular-spain.json', 'spain': 'popular-spain.json',
+             'hollanda': 'popular-netherlands.json', 'netherlands': 'popular-netherlands.json',
+             'isviçre': 'popular-switzerland.json', 'switzerland': 'popular-switzerland.json',
+             'belçika': 'popular-belgium.json', 'belgium': 'popular-belgium.json',
+             'avusturya': 'popular-austria.json', 'austria': 'popular-austria.json',
+             'polonya': 'popular-poland.json', 'poland': 'popular-poland.json',
+             'çek cumhuriyeti': 'popular-czech-republic.json', 'czech republic': 'popular-czech-republic.json',
+             'macaristan': 'popular-hungary.json', 'hungary': 'popular-hungary.json',
+             'romanya': 'popular-romania.json', 'romania': 'popular-romania.json',
+             'yunanistan': 'popular-greece.json', 'greece': 'popular-greece.json',
+             'portekiz': 'popular-portugal.json', 'portugal': 'popular-portugal.json',
+             'hırvatistan': 'popular-croatia.json', 'croatia': 'popular-croatia.json',
+             'slovenya': 'popular-slovenia.json', 'slovenia': 'popular-slovenia.json',
+             'bulgaristan': 'popular-bulgaria.json', 'bulgaria': 'popular-bulgaria.json',
+             'slovakya': 'popular-slovakia.json', 'slovakia': 'popular-slovakia.json',
+             'estonya': 'popular-estonia.json', 'estonia': 'popular-estonia.json',
+             'letonya': 'popular-latvia.json', 'latvia': 'popular-latvia.json',
+             'litvanya': 'popular-lithuania.json', 'lithuania': 'popular-lithuania.json',
+             'güney kore': 'popular-south-korea.json', 'south korea': 'popular-south-korea.json',
+             'japonya': 'popular-japan.json', 'japan': 'popular-japan.json',
+             'çin': 'popular-china.json', 'china': 'popular-china.json'
+           };
+           
+           const fileName = countryFiles[countryName.toLowerCase()];
+           if (fileName) {
+             try {
+               const response = await fetch(`/json/${fileName}`);
+               if (response.ok) {
+                 const data = await response.json();
+                 return { fileName, data };
+               }
+             } catch (error) {
+               console.error('Ülke dosyası yüklenirken hata:', error);
+             }
+           }
+           
+           // Eğer mevcut dosyalarda yoksa, dinamik olarak web araştırması yap
+           return await generateCountryPlacesFromWeb(countryName);
+         }
+         
+         // Web araştırması ile ülke turistik yerlerini oluştur
+         async function generateCountryPlacesFromWeb(countryName) {
+           try {
+             // Kullanıcıya bilgi ver
+             showStatus(`${countryName} için turistik yerler araştırılıyor...`, 'info');
+             
+             // Ülkenin en popüler turistik yerlerini oluştur
+             const places = await searchTouristPlacesForCountry(countryName);
+             
+             if (places && places.length >= 10) {
+               return {
+                 fileName: `dynamic-${countryName.toLowerCase().replace(/\s+/g, '-')}.json`,
+                 data: places
+               };
+             } else {
+               console.warn(`${countryName} için yeterli turistik yer bulunamadı:`, places?.length || 0);
+               return null;
+             }
+           } catch (error) {
+             console.error(`${countryName} için web araştırması hatası:`, error);
+             return null;
+           }
+         }
+         
+         // Ülke için turistik yerler ara
+         async function searchTouristPlacesForCountry(countryName) {
+           // Ülke adını normalize et
+           const normalizedCountry = normalizeCountryName(countryName);
+           
+           // Ülkeye özel turistik yerler veritabanı
+           const countryAttractions = {
+             'brezilya': [
+               { name: 'Christ the Redeemer', city: 'Rio de Janeiro', category: 'Anıt', description: 'Rio de Janeiro\'da bulunan dünyaca ünlü İsa heykeli. Art Deco tarzında inşa edilen bu 30 metre yüksekliğindeki heykel, şehrin simgesi ve Brezilya\'nın en önemli turistik yerlerinden biridir.' },
+               { name: 'Sugarloaf Dağı', city: 'Rio de Janeiro', category: 'Doğal Güzellik', description: 'Rio de Janeiro\'nın simgesel dağı. Teleferikle çıkılan bu 396 metre yüksekliğindeki dağdan şehrin ve Copacabana plajının muhteşem manzarası izlenir.' },
+               { name: 'Iguazu Şelaleleri', city: 'Foz do Iguaçu', category: 'Doğal Güzellik', description: 'Arjantin sınırında bulunan dünyaca ünlü şelaleler. 275 adet şelaleden oluşan bu doğa harikası, UNESCO Dünya Mirası listesindedir.' },
+               { name: 'Copacabana Plajı', city: 'Rio de Janeiro', category: 'Plaj', description: 'Dünyanın en ünlü plajlarından biri. 4 km uzunluğundaki bu plaj, beyaz kumları ve canlı atmosferiyle Rio\'nun kalbidir.' },
+               { name: 'Amazon Yağmur Ormanları', city: 'Manaus', category: 'Doğal Güzellik', description: 'Dünyanın en büyük yağmur ormanı. Binlerce bitki ve hayvan türüne ev sahipliği yapan bu orman, dünyanın akciğerleri olarak bilinir.' },
+               { name: 'Pantanal', city: 'Cuiabá', category: 'Doğal Güzellik', description: 'Dünyanın en büyük sulak alanı. Jaguar, kaiman ve yüzlerce kuş türünün yaşadığı bu bölge, doğa severler için cennet.' },
+               { name: 'Salvador Tarihi Merkezi', city: 'Salvador', category: 'Tarihi Bölge', description: 'Kolonyal dönem mimarisinin en güzel örneklerinin bulunduğu tarihi merkez. Renkli evleri ve cobblestone sokakları ile UNESCO Dünya Mirası.' },
+               { name: 'Fernando de Noronha', city: 'Fernando de Noronha', category: 'Ada', description: 'Brezilya\'nın cennet adası. Kristal berraklığındaki suları, renkli mercan resifleri ve egzotik deniz yaşamı ile dalış tutkunlarının gözdesi.' },
+               { name: 'Lençóis Maranhenses', city: 'Barreirinhas', category: 'Doğal Güzellik', description: 'Beyaz kum tepeleri ve turkuaz göller arasında oluşan sürreal manzara. Yağmur mevsiminde oluşan bu doğa harikası, dünyanın en benzersiz yerlerinden biri.' },
+               { name: 'Ouro Preto', city: 'Ouro Preto', category: 'Tarihi Şehir', description: 'Altın madenciliği döneminden kalma barok mimarisi ile ünlü tarihi şehir. Taş döşeli sokakları ve kolonyal kiliseler ile UNESCO Dünya Mirası.' }
+             ],
+             'arjantin': [
+               { name: 'Iguazu Şelaleleri', city: 'Puerto Iguazu', category: 'Doğal Güzellik', description: 'Brezilya sınırında bulunan muhteşem şelaleler. 275 adet şelaleden oluşan bu doğa harikası, UNESCO Dünya Mirası listesindedir.' },
+               { name: 'Perito Moreno Buzulu', city: 'El Calafate', category: 'Buzul', description: 'Patagonia\'da bulunan aktif buzul. 250 km² alana sahip bu buzul, sürekli hareket halinde olup buzul kırılmaları izlenebilir.' },
+               { name: 'Buenos Aires Tango Mahallesi', city: 'Buenos Aires', category: 'Kültürel Bölge', description: 'Tango\'nun doğduğu renkli mahalle La Boca. Caminito sokağı, renkli evleri ve sokak sanatçıları ile ünlüdür.' },
+               { name: 'Mendoza Şarap Bölgesi', city: 'Mendoza', category: 'Şarap Bölgesi', description: 'And Dağları eteklerinde bulunan dünyaca ünlü şarap bölgesi. Malbec üzümü ile ünlü bu bölgede şarap tadımları yapılır.' },
+               { name: 'Ushuaia', city: 'Ushuaia', category: 'Şehir', description: 'Dünyanın en güney şehri. Tierra del Fuego\'da bulunan bu şehir, Antarktika turlarının başlangıç noktasıdır.' },
+               { name: 'Salta', city: 'Salta', category: 'Tarihi Şehir', description: 'Kolonyal mimarisi ile ünlü güzel şehir. And Dağları\'nın eteklerinde bulunan bu şehir, geleneksel Arjantin kültürünün merkezi.' },
+               { name: 'Bariloche', city: 'San Carlos de Bariloche', category: 'Doğal Güzellik', description: 'Göller bölgesinde bulunan tatil şehri. Nahuel Huapi Gölü kıyısında yer alan bu şehir, kayak ve doğa sporları için ünlü.' },
+               { name: 'Península Valdés', city: 'Puerto Madryn', category: 'Doğal Güzellik', description: 'Balina gözlemi için dünyaca ünlü yarımada. Güney balinalarının üreme alanı olan bu bölge, UNESCO Dünya Mirası.' },
+               { name: 'Quebrada de Humahuaca', city: 'Humahuaca', category: 'Doğal Güzellik', description: 'Renkli kayalıkları ile ünlü vadi. And Dağları\'nda bulunan bu vadi, UNESCO Dünya Mirası listesindedir.' },
+               { name: 'El Chalten', city: 'El Chalten', category: 'Doğal Güzellik', description: 'Fitz Roy Dağı\'nın eteklerinde bulunan trekking cenneti. Patagonia\'nın en güzel manzaralarına sahip bu bölge, dağcıların gözdesi.' }
+             ],
+             'meksika': [
+               { name: 'Chichen Itza', city: 'Yucatan', category: 'Tarihi Yapı', description: 'Maya medeniyetinin en önemli kalıntılarından biri. El Castillo piramidi ile ünlü bu antik şehir, UNESCO Dünya Mirası ve Dünyanın Yedi Harikası\'ndan biri.' },
+               { name: 'Teotihuacan', city: 'Mexico City', category: 'Tarihi Yapı', description: 'Güneş ve Ay piramitleri ile ünlü antik şehir. MÖ 100-650 yılları arasında Mesoamerika\'nın en büyük şehri olan bu yer, UNESCO Dünya Mirası.' },
+               { name: 'Cancun', city: 'Cancun', category: 'Plaj', description: 'Karayip Denizi kıyısında bulunan tatil cenneti. Beyaz kumlu plajları, turkuaz denizi ve Maya kalıntıları ile ünlü.' },
+               { name: 'Tulum', city: 'Tulum', category: 'Tarihi Yapı', description: 'Karayip kıyısında bulunan Maya kalıntıları. Deniz manzaralı konumu ile dünyanın en güzel antik şehirlerinden biri.' },
+               { name: 'Palenque', city: 'Chiapas', category: 'Tarihi Yapı', description: 'Yağmur ormanları içinde bulunan Maya şehri. Tapınak ve sarayları ile Maya mimarisinin en güzel örneklerini sunar.' },
+               { name: 'Guanajuato', city: 'Guanajuato', category: 'Tarihi Şehir', description: 'Renkli evleri ve yeraltı tünelleri ile ünlü kolonyal şehir. Gümüş madenciliği döneminden kalma mimarisi ile UNESCO Dünya Mirası.' },
+               { name: 'Oaxaca', city: 'Oaxaca', category: 'Kültürel Şehir', description: 'Geleneksel Meksika kültürünün kalbi. El sanatları, yerel mutfağı ve kolonyal mimarisi ile ünlü UNESCO Dünya Mirası şehri.' },
+               { name: 'Copper Canyon', city: 'Chihuahua', category: 'Doğal Güzellik', description: 'Grand Canyon\'dan daha derin olan kanyon sistemi. Tarahumara yerlilerinin yaşadığı bu bölge, tren yolculuğu ile keşfedilir.' },
+               { name: 'Isla Mujeres', city: 'Quintana Roo', category: 'Ada', description: 'Cancun yakınlarında bulunan küçük ada. Kristal berraklığındaki suları ve rahat atmosferi ile balayı çiftlerinin gözdesi.' },
+               { name: 'Puebla', city: 'Puebla', category: 'Tarihi Şehir', description: 'Barok mimarisi ve renkli çinileri ile ünlü kolonyal şehir. Mole poblano\'nun doğduğu yer olan bu şehir, UNESCO Dünya Mirası.' }
+             ]
+           };
+           
+           // Ülke adını kontrol et ve eşleştir
+           const countryKey = Object.keys(countryAttractions).find(key => 
+             key.toLowerCase() === normalizedCountry.toLowerCase() ||
+             translateCountryName(key).toLowerCase() === normalizedCountry.toLowerCase()
+           );
+           
+           if (countryKey) {
+             return countryAttractions[countryKey].map(place => ({
+               name: place.name,
+               city: place.city,
+               country: countryName,
+               category: place.category,
+               description: place.description,
+               visited: false
+             }));
+           }
+           
+           // Eğer özel veritabanında yoksa, genel turistik yerler oluştur
+           return generateGenericTouristPlaces(countryName);
+         }
+         
+         // Ülke adını normalize et
+         function normalizeCountryName(countryName) {
+           const countryMap = {
+             'brazil': 'brezilya', 'brasil': 'brezilya', 'brezilya': 'brezilya',
+             'argentina': 'arjantin', 'arjantin': 'arjantin',
+             'mexico': 'meksika', 'méxico': 'meksika', 'meksika': 'meksika',
+             'united states': 'amerika', 'usa': 'amerika', 'amerika': 'amerika',
+             'canada': 'kanada', 'kanada': 'kanada',
+             'australia': 'avustralya', 'avustralya': 'avustralya',
+             'india': 'hindistan', 'hindistan': 'hindistan',
+             'russia': 'rusya', 'rusya': 'rusya'
+           };
+           
+           return countryMap[countryName.toLowerCase()] || countryName;
+         }
+         
+         // Ülke adını çevir
+         function translateCountryName(countryKey) {
+           const translations = {
+             'brezilya': 'brazil',
+             'arjantin': 'argentina', 
+             'meksika': 'mexico'
+           };
+           
+           return translations[countryKey] || countryKey;
+         }
+         
+         // Genel turistik yerler oluştur
+         function generateGenericTouristPlaces(countryName) {
+           const genericPlaces = [
+             { name: `${countryName} Ulusal Müzesi`, category: 'Müze', description: `${countryName}'nın en önemli müzesi. Ülkenin tarihi, kültürü ve sanatı hakkında kapsamlı bilgi sunar.` },
+             { name: `${countryName} Merkez Meydanı`, category: 'Meydan', description: `${countryName}'nın kalbi olan ana meydan. Tarihi binalar ve önemli anıtlarla çevrili.` },
+             { name: `${countryName} Sarayı`, category: 'Saray', description: `${countryName}'nın tarihi sarayı. Kraliyet mimarisi ve muhteşem bahçeleri ile ünlü.` },
+             { name: `${countryName} Katedrali`, category: 'Dini Yapı', description: `${countryName}'nın en önemli dini yapısı. Gotik mimarisi ve tarihi önemi ile dikkat çeker.` },
+             { name: `${countryName} Ulusal Parkı`, category: 'Doğal Güzellik', description: `${countryName}'nın en güzel doğal alanı. Endemik bitki ve hayvan türleri barındırır.` },
+             { name: `${countryName} Sanat Galerisi`, category: 'Galeri', description: `${countryName}'nın en prestijli sanat galerisi. Yerel ve uluslararası sanat eserlerini sergiler.` },
+             { name: `${countryName} Kalesi`, category: 'Kale', description: `${countryName}'nın tarihi kalesi. Ortaçağ mimarisi ve savunma sistemleri ile ünlü.` },
+             { name: `${countryName} Botanik Bahçesi`, category: 'Bahçe', description: `${countryName}'nın en büyük botanik bahçesi. Binlerce bitki türü ve huzurlu atmosfer.` },
+             { name: `${countryName} Opera Binası`, category: 'Kültür Merkezi', description: `${countryName}'nın en prestijli opera binası. Klasik mimarisi ve mükemmel akustiği ile ünlü.` },
+             { name: `${countryName} Tarihi Köprüsü`, category: 'Köprü', description: `${countryName}'nın simgesel köprüsü. Mühendislik harikası olan bu yapı, şehrin önemli geçiş noktası.` },
+             { name: `${countryName} Plajı`, category: 'Plaj', description: `${countryName}'nın en güzel plajı. Altın sarısı kumları ve berrak denizi ile tatil cenneti.` },
+             { name: `${countryName} Dağı`, category: 'Dağ', description: `${countryName}'nın en yüksek dağı. Muhteşem manzarası ve trekking rotaları ile doğa severlerinin gözdesi.` }
+           ];
+           
+           return genericPlaces.slice(0, 10); // İlk 10 yeri döndür
+         }
+         
+         // Ülke yerlerini ekle (en az 10 yer kontrolü)
+         async function addCountryPlaces(user, countryData, countryName) {
+           // Dinamik olarak oluşturulan veriler için data array'ini kontrol et
+           const places = Array.isArray(countryData.data) ? countryData.data : countryData.data.places || [];
+           
+           // Ülke için en az 10 yer kontrolü
+           if (places.length < 10) {
+             alert(`${countryName} için yeterli popüler yer bulunamadı (${places.length} yer mevcut, en az 10 gerekli). Yerler eklenmedi.`);
+             return;
+           }
+           
+           // Var olan ülke yerlerini kontrol et
+           const existingCountryPlaces = await checkExistingCountryPlaces(user, countryName);
+           if (existingCountryPlaces.length > 0) {
+             alert(`${countryName} için yerler zaten eklenmiştir. ${existingCountryPlaces.length} yer mevcut.`);
+             return;
+           }
+           
+           // İlk 15 yeri al (veya mevcut sayı kadar)
+           const selectedPlaces = places.slice(0, Math.min(15, places.length));
+           
+           // Kullanıcıya işlem durumu bildir
+           showStatus(`${countryName} için ${selectedPlaces.length} turistik yer ekleniyor...`, 'info');
+           
+           let addedCount = 0;
+           for (const place of selectedPlaces) {
+             const placeData = {
+               name: place.name || 'Unknown Place',
+               city: place.city || 'Unknown City',
+               country: place.country || countryName || 'Unknown Country',
+               category: place.category || 'Turistik Yer',
+               description: place.description || '',
+               visited: false,
+               createdAt: new Date()
+             };
+             
+             // Her bir yerin daha önce eklenip eklenmediğini kontrol et
+             const placeExists = await checkIfPlaceExists(user, placeData.name, placeData.city);
+             if (!placeExists) {
+               await addDoc(collection(db, 'users', user.uid, 'places'), placeData);
+               addedCount++;
+             }
+           }
+           
+           if (addedCount > 0) {
+             showStatus(`${countryName} için ${addedCount} yeni turistik yer başarıyla eklendi!`, 'success');
+           } else {
+             showStatus(`${countryName} için tüm yerler zaten mevcut.`, 'info');
+           }
+           loadPlacesTable(user);
+         }
+         
+         // Var olan şehir yerlerini kontrol et
+         async function checkExistingPlaces(user, cityName) {
+           const placesRef = collection(db, 'users', user.uid, 'places');
+           const q = query(placesRef, where('city', '==', cityName));
+           const querySnapshot = await getDocs(q);
+           return querySnapshot.docs.map(doc => doc.data());
+         }
+         
+         // Belirli bir yerin daha önce eklenip eklenmediğini kontrol et
+         async function checkIfPlaceExists(user, placeName, cityName) {
+           const placesRef = collection(db, 'users', user.uid, 'places');
+           const q = query(placesRef, where('name', '==', placeName), where('city', '==', cityName));
+           const querySnapshot = await getDocs(q);
+           return querySnapshot.size > 0;
+         }
+         
+         // Var olan ülke yerlerini kontrol et
+         async function checkExistingCountryPlaces(user, countryName) {
+           const placesRef = collection(db, 'users', user.uid, 'places');
+           const q = query(placesRef, where('country', '==', countryName.toUpperCase()));
+           const querySnapshot = await getDocs(q);
+           return querySnapshot.docs.map(doc => doc.data());
+         }
+         
+         // Şehir yerlerini ekle (şehirler için minimum yer kontrolü yok)
+         async function addCityPlaces(user, cityName) {
+           try {
+             // Var olan yerleri kontrol et
+             const existingPlaces = await checkExistingPlaces(user, cityName);
+             if (existingPlaces.length > 0) {
+               showStatus(`${cityName} için yerler zaten eklenmiştir. ${existingPlaces.length} yer mevcut.`, 'info');
+               return;
+             }
+             
+             // Şehir için ülke tespiti
+             const detectedCountry = detectCountryFromCity(cityName);
+             
+             // Şehir için yerler oluştur
+             const cityPlaces = generateCityPlaces(cityName, detectedCountry);
+             
+             // Şehirler için en az 1 yer yeterli
+             if (!cityPlaces || cityPlaces.length === 0) {
+               showStatus(`${cityName} için hiç popüler yer bulunamadı.`, 'error');
+               return;
+             }
+             
+             const countryFilter = document.getElementById('countryFilter');
+             
+             // Ülke filtresini otomatik ayarla (tespit edildiyse)
+             if (detectedCountry && countryFilter) {
+               countryFilter.value = detectedCountry;
+               // Arka planı da güncelle
+               if (window.enhancedBackgroundManager) {
+                 window.enhancedBackgroundManager.updateBackgroundForCountry(detectedCountry);
+               }
+             }
+             
+             // İlk 15 yeri al (veya mevcut sayı kadar)
+             const selectedPlaces = cityPlaces.slice(0, Math.min(15, cityPlaces.length));
+             
+             // Kullanıcıya işlem durumu bildir
+             showStatus(`${cityName} için ${selectedPlaces.length} turistik yer ekleniyor...`, 'info');
+             
+             let addedCount = 0;
+             for (const place of selectedPlaces) {
+               // Her bir yerin daha önce eklenip eklenmediğini kontrol et
+               const placeExists = await checkIfPlaceExists(user, place.name, place.city);
+               if (!placeExists) {
+                 await addDoc(collection(db, 'users', user.uid, 'places'), place);
+                 addedCount++;
+               }
+             }
+             
+             if (addedCount > 0) {
+               showStatus(`${cityName} için ${addedCount} yeni turistik yer başarıyla eklendi!`, 'success');
+             } else {
+               showStatus(`${cityName} için tüm yerler zaten mevcut.`, 'info');
+             }
+             loadPlacesTable(user);
+           } catch (error) {
+             console.error(`${cityName} şehir yerleri eklenirken hata:`, error);
+             showStatus(`${cityName} için yerler eklenirken hata oluştu: ${error.message}`, 'error');
+           }
+         }
+         
+         // Şehirden ülke tespiti - Dünya çapında şehirler
+         function detectCountryFromCity(cityName) {
+           const cityCountryMap = {
+             // Almanya şehirleri
+             'aachen': 'germany', 'berlin': 'germany', 'münchen': 'germany', 'hamburg': 'germany', 
+             'köln': 'germany', 'frankfurt': 'germany', 'stuttgart': 'germany', 'düsseldorf': 'germany',
+             'dortmund': 'germany', 'essen': 'germany', 'leipzig': 'germany', 'bremen': 'germany',
+             'dresden': 'germany', 'hannover': 'germany', 'nürnberg': 'germany', 'duisburg': 'germany',
+             'bonn': 'germany', 'bochum': 'germany', 'wuppertal': 'germany', 'bielefeld': 'germany',
+             'mannheim': 'germany', 'karlsruhe': 'germany', 'augsburg': 'germany', 'wiesbaden': 'germany',
+             'gelsenkirchen': 'germany', 'mönchengladbach': 'germany', 'braunschweig': 'germany',
+             'chemnitz': 'germany', 'kiel': 'germany', 'krefeld': 'germany', 'halle': 'germany',
+             'magdeburg': 'germany', 'freiburg': 'germany', 'erfurt': 'germany', 'mainz': 'germany',
+             'rostock': 'germany', 'kassel': 'germany', 'hagen': 'germany', 'potsdam': 'germany',
+             'saarbrücken': 'germany', 'hamm': 'germany', 'mülheim': 'germany', 'ludwigshafen': 'germany',
+             'leverkusen': 'germany', 'oldenburg': 'germany', 'osnabrück': 'germany', 'solingen': 'germany',
+             'heidelberg': 'germany', 'herne': 'germany', 'neuss': 'germany', 'darmstadt': 'germany',
+             'paderborn': 'germany', 'regensburg': 'germany', 'ingolstadt': 'germany', 'würzburg': 'germany',
+             'fürth': 'germany', 'wolfsburg': 'germany', 'offenbach': 'germany', 'ulm': 'germany',
+             'heilbronn': 'germany', 'pforzheim': 'germany', 'göttingen': 'germany', 'bottrop': 'germany',
+             'trier': 'germany', 'recklinghausen': 'germany', 'reutlingen': 'germany', 'bremerhaven': 'germany',
+             'koblenz': 'germany', 'bergisch gladbach': 'germany', 'jena': 'germany', 'remscheid': 'germany',
+             'erlangen': 'germany', 'moers': 'germany', 'siegen': 'germany', 'hildesheim': 'germany',
+             'salzgitter': 'germany', 'cottbus': 'germany',
+             
+             // Fransa şehirleri
+             'paris': 'france', 'lyon': 'france', 'marseille': 'france', 'toulouse': 'france',
+             'nice': 'france', 'nantes': 'france', 'strasbourg': 'france', 'montpellier': 'france',
+             'bordeaux': 'france', 'lille': 'france', 'rennes': 'france', 'reims': 'france',
+             'le havre': 'france', 'saint-étienne': 'france', 'toulon': 'france', 'angers': 'france',
+             'grenoble': 'france', 'dijon': 'france', 'nîmes': 'france', 'aix-en-provence': 'france',
+             'saint-quentin-en-yvelines': 'france', 'brest': 'france', 'le mans': 'france', 'amiens': 'france',
+             'tours': 'france', 'limoges': 'france', 'clermont-ferrand': 'france', 'villeurbanne': 'france',
+             'besançon': 'france', 'orléans': 'france', 'metz': 'france', 'rouen': 'france',
+             'mulhouse': 'france', 'perpignan': 'france', 'caen': 'france', 'boulogne-billancourt': 'france',
+             'nancy': 'france', 'argenteuil': 'france', 'roubaix': 'france', 'tourcoing': 'france',
+             'nanterre': 'france', 'avignon': 'france', 'créteil': 'france', 'dunkerque': 'france',
+             'poitiers': 'france', 'asnières-sur-seine': 'france', 'courbevoie': 'france', 'versailles': 'france',
+             'pau': 'france', 'fort-de-france': 'france', 'colombes': 'france', 'aulnay-sous-bois': 'france',
+             'saint-maur-des-fossés': 'france', 'rueil-malmaison': 'france', 'champigny-sur-marne': 'france',
+             'antibes': 'france', 'la rochelle': 'france', 'cannes': 'france',
+             
+             // İtalya şehirleri
+             'roma': 'italy', 'milano': 'italy', 'napoli': 'italy', 'torino': 'italy',
+             'palermo': 'italy', 'genova': 'italy', 'bologna': 'italy', 'firenze': 'italy',
+             'bari': 'italy', 'catania': 'italy', 'venezia': 'italy', 'verona': 'italy',
+             'messina': 'italy', 'padova': 'italy', 'trieste': 'italy', 'taranto': 'italy',
+             'brescia': 'italy', 'prato': 'italy', 'parma': 'italy', 'modena': 'italy',
+             'reggio calabria': 'italy', 'reggio emilia': 'italy', 'perugia': 'italy', 'livorno': 'italy',
+             'ravenna': 'italy', 'cagliari': 'italy', 'foggia': 'italy', 'rimini': 'italy',
+             'salerno': 'italy', 'ferrara': 'italy', 'sassari': 'italy', 'latina': 'italy',
+             'giugliano in campania': 'italy', 'monza': 'italy', 'syracuse': 'italy', 'pescara': 'italy',
+             'bergamo': 'italy', 'forlì': 'italy', 'trento': 'italy', 'vicenza': 'italy',
+             'terni': 'italy', 'bolzano': 'italy', 'novara': 'italy', 'piacenza': 'italy',
+             'ancona': 'italy', 'andria': 'italy', 'arezzo': 'italy', 'udine': 'italy',
+             'cesena': 'italy', 'lecce': 'italy', 'pesaro': 'italy', 'barletta': 'italy',
+             'alessandria': 'italy', 'la spezia': 'italy', 'pisa': 'italy', 'catanzaro': 'italy',
+             'pistoia': 'italy', 'brindisi': 'italy', 'treviso': 'italy', 'pavia': 'italy',
+             
+             // İspanya şehirleri
+             'madrid': 'spain', 'barcelona': 'spain', 'valencia': 'spain', 'sevilla': 'spain',
+             'zaragoza': 'spain', 'málaga': 'spain', 'murcia': 'spain', 'palma': 'spain',
+             'las palmas': 'spain', 'bilbao': 'spain', 'alicante': 'spain', 'córdoba': 'spain',
+             'valladolid': 'spain', 'vigo': 'spain', 'gijón': 'spain', 'hospitalet de llobregat': 'spain',
+             'vitoria-gasteiz': 'spain', 'a coruña': 'spain', 'elche': 'spain', 'oviedo': 'spain',
+             'santa cruz de tenerife': 'spain', 'badalona': 'spain', 'cartagena': 'spain', 'terrassa': 'spain',
+             'jerez de la frontera': 'spain', 'sabadell': 'spain', 'móstoles': 'spain', 'alcalá de henares': 'spain',
+             'pamplona': 'spain', 'fuenlabrada': 'spain', 'almería': 'spain', 'leganés': 'spain',
+             'donostia-san sebastián': 'spain', 'burgos': 'spain', 'santander': 'spain', 'castellón de la plana': 'spain',
+             'alcorcón': 'spain', 'getafe': 'spain', 'salamanca': 'spain', 'huelva': 'spain',
+             'logroño': 'spain', 'badajoz': 'spain', 'tarragona': 'spain', 'león': 'spain',
+             'cádiz': 'spain', 'lleida': 'spain', 'marbella': 'spain', 'dos hermanas': 'spain',
+             'mataro': 'spain', 'torrejón de ardoz': 'spain', 'parla': 'spain', 'alcobendas': 'spain',
+             
+             // İngiltere şehirleri
+             'london': 'united kingdom', 'birmingham': 'united kingdom', 'manchester': 'united kingdom', 'glasgow': 'united kingdom',
+             'liverpool': 'united kingdom', 'leeds': 'united kingdom', 'sheffield': 'united kingdom', 'edinburgh': 'united kingdom',
+             'bristol': 'united kingdom', 'cardiff': 'united kingdom', 'leicester': 'united kingdom', 'coventry': 'united kingdom',
+             'bradford': 'united kingdom', 'belfast': 'united kingdom', 'nottingham': 'united kingdom', 'kingston upon hull': 'united kingdom',
+             'newcastle upon tyne': 'united kingdom', 'stoke-on-trent': 'united kingdom', 'southampton': 'united kingdom', 'derby': 'united kingdom',
+             'portsmouth': 'united kingdom', 'brighton': 'united kingdom', 'plymouth': 'united kingdom', 'northampton': 'united kingdom',
+             'reading': 'united kingdom', 'luton': 'united kingdom', 'wolverhampton': 'united kingdom', 'bolton': 'united kingdom',
+             'bournemouth': 'united kingdom', 'norwich': 'united kingdom', 'swindon': 'united kingdom', 'swansea': 'united kingdom',
+             'southend-on-sea': 'united kingdom', 'middlesbrough': 'united kingdom', 'milton keynes': 'united kingdom', 'sunderland': 'united kingdom',
+             'warrington': 'united kingdom', 'huddersfield': 'united kingdom', 'peterborough': 'united kingdom', 'york': 'united kingdom',
+             'stockport': 'united kingdom', 'west bromwich': 'united kingdom', 'oldham': 'united kingdom', 'exeter': 'united kingdom',
+             'gloucester': 'united kingdom', 'blackpool': 'united kingdom', 'preston': 'united kingdom', 'sutton coldfield': 'united kingdom',
+             
+             // ABD şehirleri
+             'new york': 'united states', 'los angeles': 'united states', 'chicago': 'united states', 'houston': 'united states',
+             'phoenix': 'united states', 'philadelphia': 'united states', 'san antonio': 'united states', 'san diego': 'united states',
+             'dallas': 'united states', 'san jose': 'united states', 'austin': 'united states', 'jacksonville': 'united states',
+             'fort worth': 'united states', 'columbus': 'united states', 'charlotte': 'united states', 'san francisco': 'united states',
+             'indianapolis': 'united states', 'seattle': 'united states', 'denver': 'united states', 'washington': 'united states',
+             'boston': 'united states', 'el paso': 'united states', 'detroit': 'united states', 'nashville': 'united states',
+             'portland': 'united states', 'memphis': 'united states', 'oklahoma city': 'united states', 'las vegas': 'united states',
+             'louisville': 'united states', 'baltimore': 'united states', 'milwaukee': 'united states', 'albuquerque': 'united states',
+             'tucson': 'united states', 'fresno': 'united states', 'mesa': 'united states', 'sacramento': 'united states',
+             'atlanta': 'united states', 'kansas city': 'united states', 'colorado springs': 'united states', 'miami': 'united states',
+             'raleigh': 'united states', 'omaha': 'united states', 'long beach': 'united states', 'virginia beach': 'united states',
+             'oakland': 'united states', 'minneapolis': 'united states', 'tulsa': 'united states', 'arlington': 'united states',
+             'tampa': 'united states', 'new orleans': 'united states', 'wichita': 'united states', 'cleveland': 'united states',
+             
+             // Kanada şehirleri
+             'toronto': 'canada', 'montreal': 'canada', 'vancouver': 'canada', 'calgary': 'canada',
+             'edmonton': 'canada', 'ottawa': 'canada', 'winnipeg': 'canada', 'quebec city': 'canada',
+             'hamilton': 'canada', 'kitchener': 'canada', 'london': 'canada', 'victoria': 'canada',
+             'halifax': 'canada', 'oshawa': 'canada', 'windsor': 'canada', 'saskatoon': 'canada',
+             'st. catharines': 'canada', 'regina': 'canada', 'sherbrooke': 'canada', 'kelowna': 'canada',
+             'barrie': 'canada', 'abbotsford': 'canada', 'kingston': 'canada', 'sudbury': 'canada',
+             'trois-rivières': 'canada', 'guelph': 'canada', 'cambridge': 'canada', 'whitby': 'canada',
+             'thunder bay': 'canada', 'chatham': 'canada', 'red deer': 'canada', 'lethbridge': 'canada',
+             'kamloops': 'canada', 'brantford': 'canada', 'nanaimo': 'canada', 'moncton': 'canada',
+             'sarnia': 'canada', 'sault ste. marie': 'canada', 'medicine hat': 'canada', 'north bay': 'canada',
+             'prince george': 'canada', 'fredericton': 'canada', 'saint john': 'canada', 'fort mcmurray': 'canada',
+             
+             // Avustralya şehirleri
+             'sydney': 'australia', 'melbourne': 'australia', 'brisbane': 'australia', 'perth': 'australia',
+             'adelaide': 'australia', 'gold coast': 'australia', 'newcastle': 'australia', 'canberra': 'australia',
+             'sunshine coast': 'australia', 'wollongong': 'australia', 'hobart': 'australia', 'geelong': 'australia',
+             'townsville': 'australia', 'cairns': 'australia', 'darwin': 'australia', 'toowoomba': 'australia',
+             'ballarat': 'australia', 'bendigo': 'australia', 'albury': 'australia', 'launceston': 'australia',
+             'mackay': 'australia', 'rockhampton': 'australia', 'bunbury': 'australia', 'bundaberg': 'australia',
+             'coffs harbour': 'australia', 'wagga wagga': 'australia', 'hervey bay': 'australia', 'mildura': 'australia',
+             'shepparton': 'australia', 'port macquarie': 'australia', 'gladstone': 'australia', 'tamworth': 'australia',
+             'traralgon': 'australia', 'orange': 'australia', 'dubbo': 'australia', 'geraldton': 'australia',
+             'bowral': 'australia', 'bathurst': 'australia', 'nowra': 'australia', 'warrnambool': 'australia',
+             
+             // Japonya şehirleri
+             'tokyo': 'japan', 'yokohama': 'japan', 'osaka': 'japan', 'nagoya': 'japan',
+             'sapporo': 'japan', 'fukuoka': 'japan', 'kobe': 'japan', 'kawasaki': 'japan',
+             'kyoto': 'japan', 'saitama': 'japan', 'hiroshima': 'japan', 'sendai': 'japan',
+             'kitakyushu': 'japan', 'chiba': 'japan', 'sakai': 'japan', 'niigata': 'japan',
+             'hamamatsu': 'japan', 'okayama': 'japan', 'sagamihara': 'japan', 'shizuoka': 'japan',
+             'kumamoto': 'japan', 'kagoshima': 'japan', 'matsuyama': 'japan', 'kanazawa': 'japan',
+             'utsunomiya': 'japan', 'matsudo': 'japan', 'kawaguchi': 'japan', 'takatsuki': 'japan',
+             'toyama': 'japan', 'toyota': 'japan', 'takamatsu': 'japan', 'machida': 'japan',
+             'gifu': 'japan', 'fujisawa': 'japan', 'kashiwa': 'japan', 'toyonaka': 'japan',
+             'nagano': 'japan', 'iwaki': 'japan', 'asahikawa': 'japan', 'okazaki': 'japan',
+             'miyazaki': 'japan', 'nara': 'japan', 'suita': 'japan', 'wakayama': 'japan',
+             
+             // Güney Kore şehirleri
+             'seoul': 'south korea', 'busan': 'south korea', 'incheon': 'south korea', 'daegu': 'south korea',
+             'daejeon': 'south korea', 'gwangju': 'south korea', 'suwon': 'south korea', 'ulsan': 'south korea',
+             'changwon': 'south korea', 'goyang': 'south korea', 'yongin': 'south korea', 'seongnam': 'south korea',
+             'bucheon': 'south korea', 'ansan': 'south korea', 'cheongju': 'south korea', 'jeonju': 'south korea',
+             'anyang': 'south korea', 'cheonan': 'south korea', 'namyangju': 'south korea', 'pohang': 'south korea',
+             'uijeongbu': 'south korea', 'siheung': 'south korea', 'paju': 'south korea', 'gimhae': 'south korea',
+             'pyeongtaek': 'south korea', 'jinju': 'south korea', 'yangju': 'south korea', 'icheon': 'south korea',
+             'gunpo': 'south korea', 'osan': 'south korea', 'gwangmyeong': 'south korea', 'jeju': 'south korea',
+             'hanam': 'south korea', 'gimpo': 'south korea', 'guri': 'south korea', 'mokpo': 'south korea',
+             'wonju': 'south korea', 'sacheon': 'south korea', 'yangsan': 'south korea', 'gwangyang': 'south korea',
+             
+             // Çin şehirleri
+             'beijing': 'china', 'shanghai': 'china', 'guangzhou': 'china', 'shenzhen': 'china',
+             'tianjin': 'china', 'wuhan': 'china', 'dongguan': 'china', 'chengdu': 'china',
+             'nanjing': 'china', 'chongqing': 'china', 'xian': 'china', 'shenyang': 'china',
+             'hangzhou': 'china', 'dalian': 'china', 'qingdao': 'china', 'jinan': 'china',
+             'harbin': 'china', 'zhengzhou': 'china', 'shantou': 'china', 'foshan': 'china',
+             'changchun': 'china', 'shijiazhuang': 'china', 'kunming': 'china', 'changsha': 'china',
+             'hefei': 'china', 'urumqi': 'china', 'suzhou': 'china', 'wuxi': 'china',
+             'ningbo': 'china', 'lanzhou': 'china', 'xuzhou': 'china', 'wenzhou': 'china',
+             'nanning': 'china', 'guiyang': 'china', 'taiyuan': 'china', 'nanchang': 'china',
+             'zibo': 'china', 'yantai': 'china', 'huizhou': 'china', 'weifang': 'china',
+             'handan': 'china', 'zhuhai': 'china', 'baotou': 'china', 'tangshan': 'china',
+             
+             // Hindistan şehirleri
+             'mumbai': 'india', 'delhi': 'india', 'bangalore': 'india', 'hyderabad': 'india',
+             'ahmedabad': 'india', 'chennai': 'india', 'kolkata': 'india', 'surat': 'india',
+             'pune': 'india', 'jaipur': 'india', 'lucknow': 'india', 'kanpur': 'india',
+             'nagpur': 'india', 'indore': 'india', 'thane': 'india', 'bhopal': 'india',
+             'visakhapatnam': 'india', 'pimpri-chinchwad': 'india', 'patna': 'india', 'vadodara': 'india',
+             'ghaziabad': 'india', 'ludhiana': 'india', 'agra': 'india', 'nashik': 'india',
+             'faridabad': 'india', 'meerut': 'india', 'rajkot': 'india', 'kalyan-dombivli': 'india',
+             'vasai-virar': 'india', 'varanasi': 'india', 'srinagar': 'india', 'aurangabad': 'india',
+             'dhanbad': 'india', 'amritsar': 'india', 'navi mumbai': 'india', 'allahabad': 'india',
+             'ranchi': 'india', 'howrah': 'india', 'coimbatore': 'india', 'jabalpur': 'india',
+             'gwalior': 'india', 'vijayawada': 'india', 'jodhpur': 'india', 'madurai': 'india',
+             
+             // Brezilya şehirleri
+             'são paulo': 'brazil', 'rio de janeiro': 'brazil', 'brasília': 'brazil', 'salvador': 'brazil',
+             'fortaleza': 'brazil', 'belo horizonte': 'brazil', 'manaus': 'brazil', 'curitiba': 'brazil',
+             'recife': 'brazil', 'goiânia': 'brazil', 'belém': 'brazil', 'porto alegre': 'brazil',
+             'guarulhos': 'brazil', 'campinas': 'brazil', 'são luís': 'brazil', 'são gonçalo': 'brazil',
+             'maceió': 'brazil', 'duque de caxias': 'brazil', 'natal': 'brazil', 'teresina': 'brazil',
+             'campo grande': 'brazil', 'nova iguaçu': 'brazil', 'são bernardo do campo': 'brazil', 'joão pessoa': 'brazil',
+             'santo andré': 'brazil', 'osasco': 'brazil', 'jaboatão dos guararapes': 'brazil', 'são josé dos campos': 'brazil',
+             'ribeirão preto': 'brazil', 'uberlândia': 'brazil', 'sorocaba': 'brazil', 'contagem': 'brazil',
+             'aracaju': 'brazil', 'feira de santana': 'brazil', 'cuiabá': 'brazil', 'joinville': 'brazil',
+             'aparecida de goiânia': 'brazil', 'londrina': 'brazil', 'juiz de fora': 'brazil', 'ananindeua': 'brazil',
+             
+             // Rusya şehirleri
+             'moscow': 'russia', 'saint petersburg': 'russia', 'novosibirsk': 'russia', 'yekaterinburg': 'russia',
+             'nizhny novgorod': 'russia', 'kazan': 'russia', 'chelyabinsk': 'russia', 'omsk': 'russia',
+             'samara': 'russia', 'rostov-on-don': 'russia', 'ufa': 'russia', 'krasnoyarsk': 'russia',
+             'perm': 'russia', 'voronezh': 'russia', 'volgograd': 'russia', 'krasnodar': 'russia',
+             'saratov': 'russia', 'tyumen': 'russia', 'tolyatti': 'russia', 'izhevsk': 'russia',
+             'barnaul': 'russia', 'ulyanovsk': 'russia', 'irkutsk': 'russia', 'vladivostok': 'russia',
+             'yaroslavl': 'russia', 'habarovsk': 'russia', 'makhachkala': 'russia', 'tomsk': 'russia',
+             'orenburg': 'russia', 'kemerovo': 'russia', 'ryazan': 'russia', 'astrakhan': 'russia',
+             'naberezhnye chelny': 'russia', 'penza': 'russia', 'lipetsk': 'russia', 'tula': 'russia',
+             'kirov': 'russia', 'cheboksary': 'russia', 'kaliningrad': 'russia', 'bryansk': 'russia',
+             
+             // Meksika şehirleri
+             'mexico city': 'mexico', 'guadalajara': 'mexico', 'monterrey': 'mexico', 'puebla': 'mexico',
+             'tijuana': 'mexico', 'león': 'mexico', 'juárez': 'mexico', 'torreón': 'mexico',
+             'querétaro': 'mexico', 'san luis potosí': 'mexico', 'mérida': 'mexico', 'mexicali': 'mexico',
+             'aguascalientes': 'mexico', 'cuernavaca': 'mexico', 'saltillo': 'mexico', 'hermosillo': 'mexico',
+             'cancún': 'mexico', 'durango': 'mexico', 'xalapa': 'mexico', 'toluca': 'mexico',
+             'reynosa': 'mexico', 'chihuahua': 'mexico', 'morelia': 'mexico', 'tampico': 'mexico',
+             'culiacán': 'mexico', 'acapulco': 'mexico', 'chimalhuacán': 'mexico', 'tlalnepantla': 'mexico',
+             'veracruz': 'mexico', 'pachuca': 'mexico', 'oaxaca': 'mexico', 'tuxtla gutiérrez': 'mexico',
+             'mazatlán': 'mexico', 'irapuato': 'mexico', 'nuevo laredo': 'mexico', 'villahermosa': 'mexico',
+             
+             // Arjantin şehirleri
+             'buenos aires': 'argentina', 'córdoba': 'argentina', 'rosario': 'argentina', 'mendoza': 'argentina',
+             'tucumán': 'argentina', 'la plata': 'argentina', 'mar del plata': 'argentina', 'salta': 'argentina',
+             'santa fe': 'argentina', 'san juan': 'argentina', 'resistencia': 'argentina', 'santiago del estero': 'argentina',
+             'corrientes': 'argentina', 'posadas': 'argentina', 'neuquén': 'argentina', 'bahía blanca': 'argentina',
+             'paraná': 'argentina', 'formosa': 'argentina', 'san luis': 'argentina', 'la rioja': 'argentina',
+             'catamarca': 'argentina', 'río cuarto': 'argentina', 'comodoro rivadavia': 'argentina', 'concordia': 'argentina',
+             'san rafael': 'argentina', 'tandil': 'argentina', 'san nicolás': 'argentina', 'río gallegos': 'argentina',
+             'ushuaia': 'argentina', 'san salvador de jujuy': 'argentina', 'pergamino': 'argentina', 'zárate': 'argentina',
+             'campana': 'argentina', 'venado tuerto': 'argentina', 'junín': 'argentina', 'olavarría': 'argentina',
+             
+             // Türkiye şehirleri
+             'istanbul': 'turkey', 'ankara': 'turkey', 'izmir': 'turkey', 'bursa': 'turkey',
+             'antalya': 'turkey', 'adana': 'turkey', 'konya': 'turkey', 'şanlıurfa': 'turkey',
+             'gaziantep': 'turkey', 'kayseri': 'turkey', 'mersin': 'turkey', 'eskişehir': 'turkey',
+             'diyarbakır': 'turkey', 'samsun': 'turkey', 'denizli': 'turkey', 'adapazarı': 'turkey',
+             'malatya': 'turkey', 'kahramanmaraş': 'turkey', 'erzurum': 'turkey', 'van': 'turkey',
+             'batman': 'turkey', 'elazığ': 'turkey', 'iğdır': 'turkey', 'tokat': 'turkey',
+             'sivas': 'turkey', 'gebze': 'turkey', 'kocaeli': 'turkey', 'manisa': 'turkey',
+             'balıkesir': 'turkey', 'aydın': 'turkey', 'tekirdağ': 'turkey', 'çorum': 'turkey',
+             'kırıkkale': 'turkey', 'afyon': 'turkey', 'isparta': 'turkey', 'zonguldak': 'turkey',
+             'uşak': 'turkey', 'düzce': 'turkey', 'osmaniye': 'turkey', 'kırşehir': 'turkey',
+             
+             // Hollanda şehirleri
+             'amsterdam': 'netherlands', 'rotterdam': 'netherlands', 'the hague': 'netherlands', 'utrecht': 'netherlands',
+             'eindhoven': 'netherlands', 'tilburg': 'netherlands', 'groningen': 'netherlands', 'almere': 'netherlands',
+             'breda': 'netherlands', 'nijmegen': 'netherlands', 'enschede': 'netherlands', 'haarlem': 'netherlands',
+             'arnhem': 'netherlands', 'zaanstad': 'netherlands', 'amersfoort': 'netherlands', 'apeldoorn': 'netherlands',
+             's-hertogenbosch': 'netherlands', 'hoofddorp': 'netherlands', 'maastricht': 'netherlands', 'leiden': 'netherlands',
+             'dordrecht': 'netherlands', 'zoetermeer': 'netherlands', 'zwolle': 'netherlands', 'deventer': 'netherlands',
+             'delft': 'netherlands', 'alkmaar': 'netherlands', 'leeuwarden': 'netherlands', 'sittard-geleen': 'netherlands',
+             'venlo': 'netherlands', 'hilversum': 'netherlands', 'hengelo': 'netherlands', 'purmerend': 'netherlands',
+             'roosendaal': 'netherlands', 'schiedam': 'netherlands', 'spijkenisse': 'netherlands', 'ede': 'netherlands',
+             
+             // Belçika şehirleri
+             'brussels': 'belgium', 'antwerp': 'belgium', 'ghent': 'belgium', 'charleroi': 'belgium',
+             'liège': 'belgium', 'bruges': 'belgium', 'namur': 'belgium', 'leuven': 'belgium',
+             'mons': 'belgium', 'aalst': 'belgium', 'mechelen': 'belgium', 'la louvière': 'belgium',
+             'kortrijk': 'belgium', 'hasselt': 'belgium', 'sint-niklaas': 'belgium', 'ostend': 'belgium',
+             'genk': 'belgium', 'seraing': 'belgium', 'roeselare': 'belgium', 'verviers': 'belgium',
+             'mouscron': 'belgium', 'beveren': 'belgium', 'dendermonde': 'belgium', 'beringen': 'belgium',
+             'turnhout': 'belgium', 'vilvoorde': 'belgium', 'lokeren': 'belgium', 'sint-truiden': 'belgium',
+             'herstal': 'belgium', 'brasschaat': 'belgium', 'waregem': 'belgium', 'grimbergen': 'belgium',
+             
+             // İsviçre şehirleri
+             'zurich': 'switzerland', 'geneva': 'switzerland', 'basel': 'switzerland', 'bern': 'switzerland',
+             'lausanne': 'switzerland', 'winterthur': 'switzerland', 'lucerne': 'switzerland', 'st. gallen': 'switzerland',
+             'lugano': 'switzerland', 'biel/bienne': 'switzerland', 'thun': 'switzerland', 'köniz': 'switzerland',
+             'la chaux-de-fonds': 'switzerland', 'schaffhausen': 'switzerland', 'fribourg': 'switzerland', 'vernier': 'switzerland',
+             'chur': 'switzerland', 'neuchâtel': 'switzerland', 'uster': 'switzerland', 'sion': 'switzerland',
+             'emmen': 'switzerland', 'zug': 'switzerland', 'yverdon-les-bains': 'switzerland', 'dübendorf': 'switzerland',
+             'dietikon': 'switzerland', 'montreux': 'switzerland', 'frauenfeld': 'switzerland', 'wetzikon': 'switzerland',
+             'baar': 'switzerland', 'rapperswil-jona': 'switzerland', 'carouge': 'switzerland', 'riehen': 'switzerland',
+             
+             // Avusturya şehirleri
+             'vienna': 'austria', 'graz': 'austria', 'linz': 'austria', 'salzburg': 'austria',
+             'innsbruck': 'austria', 'klagenfurt': 'austria', 'villach': 'austria', 'wels': 'austria',
+             'sankt pölten': 'austria', 'dornbirn': 'austria', 'steyr': 'austria', 'wiener neustadt': 'austria',
+             'feldkirch': 'austria', 'bregenz': 'austria', 'leonding': 'austria', 'klosterneuburg': 'austria',
+             'baden': 'austria', 'wolfsberg': 'austria', 'leoben': 'austria', 'krems': 'austria',
+             'traun': 'austria', 'amstetten': 'austria', 'kapfenberg': 'austria', 'mödling': 'austria',
+             'hallein': 'austria', 'kufstein': 'austria', 'traiskirchen': 'austria', 'schwechat': 'austria',
+             'braunau am inn': 'austria', 'stockerau': 'austria', 'saalfelden': 'austria', 'ansfelden': 'austria',
+             
+             // Portekiz şehirleri
+             'lisbon': 'portugal', 'porto': 'portugal', 'amadora': 'portugal', 'braga': 'portugal',
+             'setúbal': 'portugal', 'coimbra': 'portugal', 'funchal': 'portugal', 'almada': 'portugal',
+             'agualva-cacém': 'portugal', 'queluz': 'portugal', 'aveiro': 'portugal', 'évora': 'portugal',
+             'rio maior': 'portugal', 'odivelas': 'portugal', 'loures': 'portugal', 'matosinhos': 'portugal',
+             'gondomar': 'portugal', 'vila nova de gaia': 'portugal', 'viseu': 'portugal', 'guimarães': 'portugal',
+             'leiria': 'portugal', 'faro': 'portugal', 'santarém': 'portugal', 'barreiro': 'portugal',
+             'montijo': 'portugal', 'sintra': 'portugal', 'cascais': 'portugal', 'vila franca de xira': 'portugal',
+             'esposende': 'portugal', 'póvoa de varzim': 'portugal', 'torres vedras': 'portugal', 'paredes': 'portugal',
+             
+             // Yunanistan şehirleri
+             'athens': 'greece', 'thessaloniki': 'greece', 'patras': 'greece', 'heraklion': 'greece',
+             'larissa': 'greece', 'volos': 'greece', 'rhodes': 'greece', 'ioannina': 'greece',
+             'chania': 'greece', 'chalcis': 'greece', 'serres': 'greece', 'alexandroupoli': 'greece',
+             'xanthi': 'greece', 'katerini': 'greece', 'trikala': 'greece', 'lamia': 'greece',
+             'kavala': 'greece', 'kalamata': 'greece', 'veria': 'greece', 'corfu': 'greece',
+             'drama': 'greece', 'tripoli': 'greece', 'kozani': 'greece', 'agrinio': 'greece',
+             'giannitsa': 'greece', 'preveza': 'greece', 'karditsa': 'greece', 'rethymno': 'greece',
+             'mytilene': 'greece', 'chios': 'greece', 'pyrgos': 'greece', 'aigio': 'greece',
+             
+             // Polonya şehirleri
+             'warsaw': 'poland', 'kraków': 'poland', 'łódź': 'poland', 'wrocław': 'poland',
+             'poznań': 'poland', 'gdańsk': 'poland', 'szczecin': 'poland', 'bydgoszcz': 'poland',
+             'lublin': 'poland', 'katowice': 'poland', 'białystok': 'poland', 'gdynia': 'poland',
+             'częstochowa': 'poland', 'radom': 'poland', 'sosnowiec': 'poland', 'toruń': 'poland',
+             'kielce': 'poland', 'gliwice': 'poland', 'zabrze': 'poland', 'bytom': 'poland',
+             'olsztyn': 'poland', 'bielsko-biała': 'poland', 'rzeszów': 'poland', 'ruda śląska': 'poland',
+             'rybnik': 'poland', 'tychy': 'poland', 'dąbrowa górnicza': 'poland', 'płock': 'poland',
+             'elbląg': 'poland', 'opole': 'poland', 'gorzów wielkopolski': 'poland', 'wałbrzych': 'poland',
+             
+             // Çek Cumhuriyeti şehirleri
+             'prague': 'czech republic', 'brno': 'czech republic', 'ostrava': 'czech republic', 'plzen': 'czech republic',
+             'liberec': 'czech republic', 'olomouc': 'czech republic', 'české budějovice': 'czech republic', 'hradec králové': 'czech republic',
+             'ústí nad labem': 'czech republic', 'pardubice': 'czech republic', 'zlín': 'czech republic', 'havířov': 'czech republic',
+             'kladno': 'czech republic', 'most': 'czech republic', 'opava': 'czech republic', 'frýdek-místek': 'czech republic',
+             'karviná': 'czech republic', 'jihlava': 'czech republic', 'teplice': 'czech republic', 'děčín': 'czech republic',
+             'karlovy vary': 'czech republic', 'jablonec nad nisou': 'czech republic', 'mladá boleslav': 'czech republic', 'prostějov': 'czech republic',
+             'přerov': 'czech republic', 'česká lípa': 'czech republic', 'třebíč': 'czech republic', 'tábor': 'czech republic',
+             'znojmo': 'czech republic', 'příbram': 'czech republic', 'cheb': 'czech republic', 'trutnov': 'czech republic',
+             
+             // Macaristan şehirleri
+             'budapest': 'hungary', 'debrecen': 'hungary', 'szeged': 'hungary', 'miskolc': 'hungary',
+             'pécs': 'hungary', 'győr': 'hungary', 'nyíregyháza': 'hungary', 'kecskemét': 'hungary',
+             'székesfehérvár': 'hungary', 'szombathely': 'hungary', 'szolnok': 'hungary', 'tatabánya': 'hungary',
+             'kaposvár': 'hungary', 'békéscsaba': 'hungary', 'érd': 'hungary', 'zalaegerszeg': 'hungary',
+             'sopron': 'hungary', 'eger': 'hungary', 'nagykanizsa': 'hungary', 'dunakeszi': 'hungary',
+             'hódmezővásárhely': 'hungary', 'szekszárd': 'hungary', 'mohács': 'hungary', 'törökszentmiklós': 'hungary',
+             'cegléd': 'hungary', 'orosháza': 'hungary', 'salgótarján': 'hungary', 'pápa': 'hungary',
+             'hajdúböszörmény': 'hungary', 'vác': 'hungary', 'gyula': 'hungary', 'komárom': 'hungary',
+             
+             // Romanya şehirleri
+             'bucharest': 'romania', 'cluj-napoca': 'romania', 'timișoara': 'romania', 'iași': 'romania',
+             'constanța': 'romania', 'craiova': 'romania', 'brașov': 'romania', 'galați': 'romania',
+             'ploiești': 'romania', 'oradea': 'romania', 'brăila': 'romania', 'arad': 'romania',
+             'pitești': 'romania', 'sibiu': 'romania', 'bacău': 'romania', 'târgu mureș': 'romania',
+             'baia mare': 'romania', 'buzău': 'romania', 'botoșani': 'romania', 'satu mare': 'romania',
+             'râmnicu vâlcea': 'romania', 'drobeta-turnu severin': 'romania', 'suceava': 'romania', 'piatra neamț': 'romania',
+             'târgu jiu': 'romania', 'tulcea': 'romania', 'focșani': 'romania', 'bistrița': 'romania',
+             'reșița': 'romania', 'alba iulia': 'romania', 'slatina': 'romania', 'câmpulung': 'romania',
+             
+             // Bulgaristan şehirleri
+             'sofia': 'bulgaria', 'plovdiv': 'bulgaria', 'varna': 'bulgaria', 'burgas': 'bulgaria',
+             'ruse': 'bulgaria', 'stara zagora': 'bulgaria', 'pleven': 'bulgaria', 'sliven': 'bulgaria',
+             'dobrich': 'bulgaria', 'shumen': 'bulgaria', 'pernik': 'bulgaria', 'haskovo': 'bulgaria',
+             'yambol': 'bulgaria', 'pazardzhik': 'bulgaria', 'blagoevgrad': 'bulgaria', 'veliko tarnovo': 'bulgaria',
+             'vratsa': 'bulgaria', 'gabrovo': 'bulgaria', 'asenovgrad': 'bulgaria', 'vidin': 'bulgaria',
+             'kazanlak': 'bulgaria', 'kyustendil': 'bulgaria', 'kardzhali': 'bulgaria', 'montana': 'bulgaria',
+             'dimitrovgrad': 'bulgaria', 'targovishte': 'bulgaria', 'lovech': 'bulgaria', 'silistra': 'bulgaria',
+             'dupnitsa': 'bulgaria', 'svishtov': 'bulgaria', 'velingrad': 'bulgaria', 'gorna oryahovitsa': 'bulgaria',
+             
+             // Hırvatistan şehirleri
+             'zagreb': 'croatia', 'split': 'croatia', 'rijeka': 'croatia', 'osijek': 'croatia',
+             'zadar': 'croatia', 'pula': 'croatia', 'slavonski brod': 'croatia', 'karlovac': 'croatia',
+             'varaždin': 'croatia', 'šibenik': 'croatia', 'sisak': 'croatia', 'velika gorica': 'croatia',
+             'vukovar': 'croatia', 'dubrovnik': 'croatia', 'bjelovar': 'croatia', 'koprivnica': 'croatia',
+             'požega': 'croatia', 'zaprešić': 'croatia', 'solin': 'croatia', 'cakovec': 'croatia',
+             'vinkovci': 'croatia', 'nova gradiška': 'croatia', 'trogir': 'croatia', 'krapina': 'croatia',
+             'samobor': 'croatia', 'križevci': 'croatia', 'makarska': 'croatia', 'čakovec': 'croatia',
+             'gospić': 'croatia', 'đakovo': 'croatia', 'imotski': 'croatia', 'metković': 'croatia',
+             
+             // Slovakya şehirleri
+             'bratislava': 'slovakia', 'košice': 'slovakia', 'prešov': 'slovakia', 'žilina': 'slovakia',
+             'banská bystrica': 'slovakia', 'nitra': 'slovakia', 'trnava': 'slovakia', 'martin': 'slovakia',
+             'trenčín': 'slovakia', 'poprad': 'slovakia', 'prievidza': 'slovakia', 'zvolen': 'slovakia',
+             'považská bystrica': 'slovakia', 'michalovce': 'slovakia', 'spišská nová ves': 'slovakia', 'komárno': 'slovakia',
+             'levice': 'slovakia', 'bardejov': 'slovakia', 'liptovský mikuláš': 'slovakia', 'ružomberok': 'slovakia',
+             'dolný kubín': 'slovakia', 'rimavská sobota': 'slovakia', 'topoľčany': 'slovakia', 'galanta': 'slovakia',
+             'dunajská streda': 'slovakia', 'brezno': 'slovakia', 'senica': 'slovakia', 'snina': 'slovakia',
+             'lučenec': 'slovakia', 'trebišov': 'slovakia', 'malacky': 'slovakia', 'rožňava': 'slovakia',
+             
+             // Slovenya şehirleri
+             'ljubljana': 'slovenia', 'maribor': 'slovenia', 'celje': 'slovenia', 'kranj': 'slovenia',
+             'velenje': 'slovenia', 'koper': 'slovenia', 'novo mesto': 'slovenia', 'ptuj': 'slovenia',
+             'trbovlje': 'slovenia', 'kamnik': 'slovenia', 'jesenice': 'slovenia', 'nova gorica': 'slovenia',
+             'domžale': 'slovenia', 'škofja loka': 'slovenia', 'murska sobota': 'slovenia', 'slovenj gradec': 'slovenia',
+             'krško': 'slovenia', 'postojna': 'slovenia', 'litija': 'slovenia', 'radovljica': 'slovenia',
+             'idrija': 'slovenia', 'grosuplje': 'slovenia', 'izola': 'slovenia', 'logatec': 'slovenia',
+             'vrhnika': 'slovenia', 'tolmin': 'slovenia', 'sevnica': 'slovenia', 'ajdovščina': 'slovenia',
+             'bled': 'slovenia', 'piran': 'slovenia', 'bovec': 'slovenia', 'bohinj': 'slovenia',
+             
+             // Estonya şehirleri
+             'tallinn': 'estonia', 'tartu': 'estonia', 'narva': 'estonia', 'pärnu': 'estonia',
+             'kohtla-järve': 'estonia', 'viljandi': 'estonia', 'rakvere': 'estonia', 'maardu': 'estonia',
+             'sillamäe': 'estonia', 'kuressaare': 'estonia', 'võru': 'estonia', 'valga': 'estonia',
+             'haapsalu': 'estonia', 'jõhvi': 'estonia', 'paide': 'estonia', 'keila': 'estonia',
+             'saue': 'estonia', 'elva': 'estonia', 'tapa': 'estonia', 'põlva': 'estonia',
+             'jõgeva': 'estonia', 'kiviõli': 'estonia', 'rapla': 'estonia', 'kärdla': 'estonia',
+             'türi': 'estonia', 'loksa': 'estonia', 'otepää': 'estonia', 'põltsamaa': 'estonia',
+             'kehra': 'estonia', 'paldiski': 'estonia', 'tõrva': 'estonia', 'kunda': 'estonia',
+             
+             // Letonya şehirleri
+             'riga': 'latvia', 'daugavpils': 'latvia', 'liepāja': 'latvia', 'jelgava': 'latvia',
+             'jūrmala': 'latvia', 'ventspils': 'latvia', 'rēzekne': 'latvia', 'valmiera': 'latvia',
+             'jēkabpils': 'latvia', 'ogre': 'latvia', 'tukums': 'latvia', 'salaspils': 'latvia',
+             'cēsis': 'latvia', 'kuldīga': 'latvia', 'saldus': 'latvia', 'talsi': 'latvia',
+             'dobele': 'latvia', 'krāslava': 'latvia', 'bauska': 'latvia', 'sigulda': 'latvia',
+             'madona': 'latvia', 'aizkraukle': 'latvia', 'limbaži': 'latvia', 'gulbene': 'latvia',
+             'alūksne': 'latvia', 'balvi': 'latvia', 'ludza': 'latvia', 'preiļi': 'latvia',
+             'smiltene': 'latvia', 'auce': 'latvia', 'pāvilosta': 'latvia', 'stende': 'latvia',
+             
+             // Litvanya şehirleri
+             'vilnius': 'lithuania', 'kaunas': 'lithuania', 'klaipėda': 'lithuania', 'šiauliai': 'lithuania',
+             'panevėžys': 'lithuania', 'alytus': 'lithuania', 'marijampolė': 'lithuania', 'mažeikiai': 'lithuania',
+             'jonava': 'lithuania', 'utena': 'lithuania', 'kėdainiai': 'lithuania', 'telšiai': 'lithuania',
+             'visaginas': 'lithuania', 'tauragė': 'lithuania', 'ukmergė': 'lithuania', 'plungė': 'lithuania',
+             'kretinga': 'lithuania', 'šilutė': 'lithuania', 'radviliškis': 'lithuania', 'gargždai': 'lithuania',
+             'druskininkai': 'lithuania', 'palanga': 'lithuania', 'rokiškis': 'lithuania', 'biržai': 'lithuania',
+             'elektrėnai': 'lithuania', 'garliava': 'lithuania', 'kuršėnai': 'lithuania', 'vilkaviškis': 'lithuania',
+             'šakiai': 'lithuania', 'raseiniai': 'lithuania', 'anykščiai': 'lithuania', 'prienai': 'lithuania'
+           };
+           
+           return cityCountryMap[cityName.toLowerCase()] || null; // Bilinmeyen şehirler için null döndür
+         }
+         
+         // Şehir için örnek turistik yerler oluştur
+         function generateCityPlaces(cityName, detectedCountry) {
+           const countryFilter = document.getElementById('countryFilter');
+           let selectedCountry = detectedCountry ? detectedCountry.toUpperCase() : (countryFilter ? countryFilter.value.toUpperCase() : 'GERMANY');
+           
+           // Güvenlik kontrolü - selectedCountry'nin undefined olmamasını sağla
+           if (!selectedCountry || selectedCountry === 'UNDEFINED') {
+             selectedCountry = 'GERMANY';
+           }
+           
+           // Özel şehir verileri - dünyaca ünlü şehirler için gerçek turistik yerler
+           const specialCities = {
+             'berlin': [
+               { name: 'Brandenburg Kapısı', category: 'Tarihi Yapı', desc: 'Berlin\'in en ünlü simgesi olan Brandenburg Kapısı, Almanya\'nın birleşmesinin sembolüdür. 1791 yılında inşa edilen bu neoklasik yapı, Berlin Duvarı\'nın yıkılmasından sonra özgürlüğün simgesi haline gelmiştir.' },
+               { name: 'Berlin Duvarı', category: 'Tarihi Yapı', desc: 'Soğuk Savaş döneminin en önemli sembollerinden biri olan Berlin Duvarı\'nın kalıntıları. East Side Gallery bölümünde dünyaca ünlü sanatçıların duvar resimleri bulunmaktadır.' },
+               { name: 'Reichstag Binası', category: 'Hükümet Binası', desc: 'Alman Parlamentosu\'nun bulunduğu tarihi bina. Norman Foster tarafından tasarlanan cam kubbesi ile ünlüdür ve ücretsiz ziyaret edilebilir.' },
+               { name: 'Museum Island', category: 'Müze Kompleksi', desc: 'UNESCO Dünya Mirası listesinde yer alan müze adası, beş dünyaca ünlü müzeyi barındırır: Pergamon Müzesi, Bode Müzesi, Neues Museum, Alte Nationalgalerie ve Altes Museum.' },
+               { name: 'Checkpoint Charlie', category: 'Tarihi Yer', desc: 'Soğuk Savaş döneminde Doğu ve Batı Berlin arasındaki en ünlü sınır kapısı. Bugün müze olarak hizmet vermekte ve dönemin atmosferini yaşatmaktadır.' },
+               { name: 'Tiergarten', category: 'Park', desc: 'Berlin\'in kalbinde yer alan 210 hektarlık büyük park. Yürüyüş, bisiklet sürme ve piknik için ideal. İçinde Zafer Anıtı ve Bellevue Sarayı bulunur.' },
+               { name: 'Potsdamer Platz', category: 'Şehir Merkezi', desc: 'Modern Berlin\'in kalbi olan bu meydan, gökdelenler, alışveriş merkezleri, sinema kompleksleri ve restoranlarla dolu canlı bir bölgedir.' },
+               { name: 'Berlin Katedrali', category: 'Dini Yapı', desc: 'Spree Nehri kıyısında yer alan görkemli Protestan katedrali. Barok mimarisi ve muhteşem kubbesi ile Berlin\'in en güzel yapılarından biridir.' },
+               { name: 'Alexanderplatz', category: 'Meydan', desc: 'Berlin\'in en büyük meydanlarından biri. TV Kulesi, Dünya Saati ve çeşitli alışveriş merkezleri ile şehrin önemli buluşma noktalarından biridir.' },
+               { name: 'Charlottenburg Sarayı', category: 'Saray', desc: 'Berlin\'in en büyük sarayı ve Prusya kraliyet ailesinin eski ikametgahı. Barok ve rokoko tarzında dekore edilmiş odaları ve muhteşem bahçeleri ile ünlüdür.' },
+               { name: 'Berlin TV Kulesi', category: 'Kule', desc: 'Alexanderplatz\'ta yer alan 368 metre yüksekliğindeki televizyon kulesi. Berlin\'in panoramik manzarasını sunan gözlem terası ve döner restoran ile ünlüdür.' },
+               { name: 'Kreuzberg', category: 'Mahalle', desc: 'Berlin\'in alternatif kültür merkezi ve Küçük İstanbul olarak bilinen bölge. Türk nüfusunun yoğun olduğu bu bölge, gece kulüpleri, sanat galerileri ve çok kültürlü atmosferi ile ünlüdür.' },
+               { name: 'Hackescher Markt', category: 'Alışveriş Bölgesi', desc: 'Berlin\'in en canlı alışveriş ve eğlence bölgelerinden biri. Butik mağazalar, kafeler, restoranlar ve gece hayatı ile popüler bir destinasyon.' },
+               { name: 'Gendarmenmarkt', category: 'Meydan', desc: 'Berlin\'in en güzel meydanlarından biri. Fransız ve Alman katedralleri ile Konser Salonu\'nun çevrelediği bu meydan, klasik mimarinin harikası.' },
+               { name: 'Unter den Linden', category: 'Cadde', desc: 'Berlin\'in en ünlü caddesi. Brandenburg Kapısı\'ndan başlayarak şehir merkezine uzanan bu tarihi cadde, önemli binaları ve anıtları ile ünlüdür.' },
+               { name: 'Pergamon Müzesi', category: 'Müze', desc: 'Antik mimari eserlerin sergilendiği dünyaca ünlü müze. Pergamon Sunağı, İshtar Kapısı ve Roma Pazarı Kapısı gibi muhteşem eserler barındırır.' },
+               { name: 'Topography of Terror', category: 'Müze', desc: 'Nazi döneminin korkunç tarihini anlatan açık hava müzesi. SS ve Gestapo merkezinin bulunduğu yerde kurulmuş olan müze, tarihin karanlık sayfalarını sergiler.' },
+               { name: 'Spree Nehri', category: 'Doğal Güzellik', desc: 'Berlin\'i geçen nehir. Tekne turları, nehir kıyısında yürüyüş ve çeşitli su sporları için ideal. Şehrin farklı açılardan görülmesini sağlar.' },
+               { name: 'Friedrichshain', category: 'Mahalle', desc: 'Genç ve dinamik atmosferi ile ünlü bölge. East Side Gallery, RAW Gelände ve çok sayıda bar, kulüp ile Berlin\'in alternatif yaşamının merkezi.' },
+               { name: 'Prenzlauer Berg', category: 'Mahalle', desc: 'Bohemyen atmosferi ve restore edilmiş tarihi binaları ile ünlü bölge. Kafeler, butik mağazalar ve sanat galerileri ile Berlin\'in en şık semtlerinden biri.' },
+               { name: 'Bernauer Strasse', category: 'Tarihi Yer', desc: 'Berlin Duvarı Anıtı\'nın bulunduğu sokak. Duvarın kalıntıları ve açık hava sergisi ile Soğuk Savaş döneminin acı hatıralarını yaşatır.' },
+               { name: 'Badeschiff', category: 'Eğlence', desc: 'Spree Nehri üzerinde inşa edilmiş devasa bir yüzme havuzu. Sıcak yaz günlerinde doyasıya eğlenmek ve serinlemek için gidebileceğiniz en popüler yerlerden biri.' }
+             ],
+             'paris': [
+               { name: 'Eyfel Kulesi', category: 'Anıt', desc: 'Paris\'in simgesi olan 324 metre yüksekliğindeki demir kule. 1889 yılında inşa edilen bu muhteşem yapı, şehrin her yerinden görülebilir ve gece ışıklandırması büyüleyicidir.' },
+               { name: 'Louvre Müzesi', category: 'Müze', desc: 'Dünyanın en büyük sanat müzesi. Mona Lisa, Venüs de Milo gibi ünlü eserleri barındırır. Eski kraliyet sarayında kurulmuş olan müze, sanat severlerin cenneti.' },
+               { name: 'Notre-Dame Katedrali', category: 'Dini Yapı', desc: 'Gotik mimarinin en güzel örneklerinden biri olan katedral. Victor Hugo\'nun romanıyla ünlenen bu yapı, Paris\'in kalbinde Seine Nehri üzerindeki adada yer alır.' },
+               { name: 'Champs-Élysées', category: 'Cadde', desc: 'Dünyanın en ünlü caddelerinden biri. Lüks mağazalar, kafeler ve restoranlarla dolu olan bu cadde, Arc de Triomphe\'a kadar uzanır.' },
+               { name: 'Sacré-Cœur Bazilikası', category: 'Dini Yapı', desc: 'Montmartre tepesinde yer alan beyaz bazilika. Paris\'in panoramik manzarasını sunan bu yapı, hem mimari güzelliği hem de konumuyla büyüler.' },
+               { name: 'Seine Nehri', category: 'Doğal Güzellik', desc: 'Paris\'i ikiye bölen tarihi nehir. Nehir kıyısında yürüyüş yapmak, tekne turları ve köprülerin altından geçmek unutulmaz deneyimler sunar.' },
+               { name: 'Versay Sarayı', category: 'Saray', desc: 'Fransız kraliyet ailesinin görkemli sarayı. Altın kaplı odaları, ayna salonu ve muhteşem bahçeleriyle Barok mimarinin en güzel örneği.' },
+               { name: 'Montmartre', category: 'Mahalle', desc: 'Sanatçılar mahallesi olarak ünlü bölge. Sokak sanatçıları, kabareler ve bohemyen atmosferiyle Paris\'in en romantik köşelerinden biri.' }
+             ],
+             'london': [
+               { name: 'Big Ben', category: 'Saat Kulesi', desc: 'Londra\'nın simgesi olan ünlü saat kulesi. Westminster Sarayı\'nın bir parçası olan bu gotik yapı, Thames Nehri kıyısında yer alır.' },
+               { name: 'Buckingham Sarayı', category: 'Saray', desc: 'İngiliz kraliyet ailesinin resmi ikametgahı. Nöbet değişimi töreni ve görkemli mimarisiyle ziyaretçilerin ilgisini çeker.' },
+               { name: 'Tower Bridge', category: 'Köprü', desc: 'Londra\'nın en ünlü köprüsü. Viktoryen döneminin mühendislik harikası olan bu açılır köprü, Thames Nehri üzerinde yer alır.' },
+               { name: 'British Museum', category: 'Müze', desc: 'Dünyanın en eski ve en kapsamlı müzelerinden biri. Rosetta Taşı, Mısır mumyaları ve antik Yunan heykelleri gibi paha biçilmez eserler barındırır.' },
+               { name: 'London Eye', category: 'Dönme Dolap', desc: '135 metre yüksekliğindeki dev dönme dolap. Thames Nehri kıyısında yer alan bu modern yapı, Londra\'nın 360 derece panoramik manzarasını sunar.' },
+               { name: 'Hyde Park', category: 'Park', desc: 'Londra\'nın en büyük parklarından biri. Serpentine Gölü, Speaker\'s Corner ve Diana Anısı ile ünlü olan park, şehrin yeşil ciğeri.' },
+               { name: 'Westminster Abbey', category: 'Dini Yapı', desc: 'İngiliz krallarının taç giyme törenleri ve düğünlerinin yapıldığı tarihi manastır. Gotik mimarinin muhteşem örneği.' },
+               { name: 'Tate Modern', category: 'Müze', desc: 'Modern sanatın en önemli eserlerini barındıran müze. Eski bir elektrik santralinde kurulmuş olan müze, Thames Nehri kıyısında yer alır.' }
+             ],
+             'rome': [
+               { name: 'Kolezyum', category: 'Antik Yapı', desc: 'Roma İmparatorluğu\'nun en büyük amfitiyatrosu. Gladyatör dövüşlerinin yapıldığı bu tarihi yapı, antik dünyanın mühendislik harikası.' },
+               { name: 'Vatikan Müzeleri', category: 'Müze', desc: 'Dünyanın en zengin sanat koleksiyonlarından birine sahip müze kompleksi. Sistine Şapeli ve Michelangelo\'nun freskleri burada yer alır.' },
+               { name: 'Trevi Çeşmesi', category: 'Çeşme', desc: 'Roma\'nın en ünlü çeşmesi. Barok tarzında inşa edilen bu muhteşem çeşmeye bozuk para atmak şans getirdiğine inanılır.' },
+               { name: 'Pantheon', category: 'Antik Yapı', desc: 'Roma\'nın en iyi korunmuş antik yapısı. M.S. 126 yılında inşa edilen bu tapınak, kubbeli mimarinin en erken örneklerinden biri.' },
+               { name: 'Forum Romanum', category: 'Antik Alan', desc: 'Antik Roma\'nın siyasi, ticari ve sosyal merkezi. Tapınaklar, bazilika ve kemerlerin kalıntıları Roma İmparatorluğu\'nun ihtişamını gözler önüne serer.' },
+               { name: 'İspanyol Merdivenleri', category: 'Meydan', desc: '135 basamaklı ünlü merdivenler. Trinità dei Monti kilisesine çıkan bu merdivenler, Roma\'nın en popüler buluşma noktalarından biri.' },
+               { name: 'Castel Sant\'Angelo', category: 'Kale', desc: 'Tiber Nehri kıyısında yer alan silindirik kale. Başlangıçta Hadrian\'ın mezarı olarak inşa edilen yapı, daha sonra papa kalesi olarak kullanıldı.' },
+               { name: 'Villa Borghese', category: 'Park', desc: 'Roma\'nın en büyük parkı. İçinde Borghese Galerisi, hayvanat bahçesi ve göl bulunan bu park, şehrin yeşil oazı.' }
+             ],
+             'tokyo': [
+               { name: 'Tokyo Skytree', category: 'Kule', desc: '634 metre yüksekliğindeki televizyon kulesi. Tokyo\'nun modern simgesi olan bu yapı, şehrin panoramik manzarasını sunar.' },
+               { name: 'Senso-ji Tapınağı', category: 'Tapınak', desc: 'Tokyo\'nun en eski Budist tapınağı. Asakusa bölgesinde yer alan bu tapınak, geleneksel Japon mimarisinin güzel bir örneği.' },
+               { name: 'Shibuya Geçidi', category: 'Kavşak', desc: 'Dünyanın en kalabalık yaya geçidi. Her gün milyonlarca insanın geçtiği bu kavşak, modern Tokyo\'nun sembolü.' },
+               { name: 'Meiji Tapınağı', category: 'Tapınak', desc: 'İmparator Meiji ve İmparatoriçe Shoken\'in anısına inşa edilen Shinto tapınağı. Şehrin ortasında yer alan huzurlu bir oaz.' },
+               { name: 'Tsukiji Balık Pazarı', category: 'Pazar', desc: 'Dünyanın en büyük balık pazarı. Taze sushi ve sashimi için en iyi adres olan bu pazar, Japon mutfak kültürünün kalbi.' },
+               { name: 'İmparatorluk Sarayı', category: 'Saray', desc: 'Japon İmparatoru\'nun ikametgahı. Geleneksel Japon bahçeleri ve tarihi yapılarıyla çevrili olan saray, Tokyo\'nun merkezinde yer alır.' },
+               { name: 'Harajuku', category: 'Mahalle', desc: 'Gençlik kültürü ve modanın merkezi. Renkli kostümler, manga kültürü ve alternatif moda trendlerinin buluşma noktası.' },
+               { name: 'Ueno Parkı', category: 'Park', desc: 'Tokyo\'nun kültür merkezi. İçinde müzeler, hayvanat bahçesi ve bahar aylarında kiraz çiçekleri bulunan bu park, şehrin kültürel kalbi.' }
+             ],
+             'istanbul': [
+               { name: 'Ayasofya', category: 'Tarihi Yapı', desc: 'Bizans ve Osmanlı mimarisinin muhteşem sentezi. 1500 yıllık bu yapı, İstanbul\'un en önemli simgelerinden biri.' },
+               { name: 'Sultanahmet Camii', category: 'Cami', desc: 'Altı minaresi ile ünlü Mavi Cami. İçindeki mavi çiniler ve görkemli mimarisi ile Osmanlı sanatının en güzel örneği.' },
+               { name: 'Topkapı Sarayı', category: 'Saray', desc: 'Osmanlı padişahlarının 400 yıl boyunca yaşadığı saray. Hazine dairesi, harem ve muhteşem Boğaz manzarası ile ünlü.' },
+               { name: 'Kapalıçarşı', category: 'Çarşı', desc: 'Dünyanın en eski kapalı çarşılarından biri. 4000 dükkanı ile halı, mücevher, baharat ve hediyelik eşya alışverişinin merkezi.' },
+               { name: 'Galata Kulesi', category: 'Kule', desc: 'Cenevizliler tarafından inşa edilen tarihi kule. İstanbul\'un 360 derece panoramik manzarasını sunan en güzel seyir noktası.' },
+               { name: 'Boğaziçi', category: 'Doğal Güzellik', desc: 'Avrupa ve Asya\'yı birleştiren boğaz. Tekne turları, sahil yürüyüşleri ve köprü manzaraları ile İstanbul\'un en güzel yanı.' },
+               { name: 'Basilika Sarnıcı', category: 'Tarihi Yapı', desc: 'Bizans döneminden kalma yeraltı sarnıcı. 336 sütunlu bu gizemli yapı, İstanbul\'un yeraltı hazinelerinden biri.' },
+               { name: 'Dolmabahçe Sarayı', category: 'Saray', desc: 'Osmanlı\'nın son dönem sarayı. Barok ve neoklasik mimarinin harmanlandığı bu görkemli saray, Boğaz kıyısında yer alır.' }
+             ],
+             'beijing': [
+               { name: 'Yasak Şehir', category: 'Saray', desc: 'Ming ve Qing hanedanlarının 500 yıl boyunca yaşadığı görkemli saray kompleksi. 9999 odası ile dünyanın en büyük saray kompleksi.' },
+               { name: 'Çin Seddi', category: 'Tarihi Yapı', desc: 'Dünyanın en uzun yapısı olan Çin Seddi\'nin Beijing yakınlarındaki bölümü. 2000 yıllık bu muhteşem savunma yapısı, uzaydan görülebilen tek yapı.' },
+               { name: 'Tiananmen Meydanı', category: 'Meydan', desc: 'Dünyanın en büyük şehir meydanı. Çin\'in siyasi merkezi olan bu meydan, önemli devlet törenlerinin yapıldığı yer.' },
+               { name: 'Cennet Tapınağı', category: 'Tapınak', desc: 'Ming ve Qing imparatorlarının cennet için dua ettiği dairesel tapınak. Geleneksel Çin mimarisinin en güzel örneği.' },
+               { name: 'Yaz Sarayı', category: 'Saray', desc: 'İmparatorluk ailesinin yaz ikametgahı. Kunming Gölü ve muhteşem bahçeleriyle Çin bahçe sanatının en güzel örneği.' },
+               { name: 'Lama Tapınağı', category: 'Tapınak', desc: 'Beijing\'in en önemli Budist tapınağı. Tibet Budizmi\'nin merkezi olan bu tapınak, renkli mimarisi ve huzurlu atmosferiyle ünlü.' },
+               { name: 'Hutong Sokakları', category: 'Tarihi Mahalle', desc: 'Geleneksel Beijing yaşamının sürdüğü dar sokaklar. Siheyuan evleri ve yerel yaşam kültürünü deneyimleyebileceğiniz otantik bölge.' },
+               { name: 'Beihai Parkı', category: 'Park', desc: 'Beijing\'in en eski imperial parkı. Beyaz Pagoda ve göl manzarası ile şehrin en huzurlu köşelerinden biri.' }
+             ],
+             'shanghai': [
+               { name: 'Bund', category: 'Sahil', desc: 'Shanghai\'ın simgesi olan sahil şeridi. Art Deco binaları ve modern gökdelenler arasındaki kontrast, şehrin geçmişi ve geleceğini yansıtır.' },
+               { name: 'Oriental Pearl Tower', category: 'Kule', desc: '468 metre yüksekliğindeki futuristik televizyon kulesi. Shanghai\'ın modern simgesi olan bu kule, şehrin panoramik manzarasını sunar.' },
+               { name: 'Yu Garden', category: 'Bahçe', desc: 'Ming hanedanı döneminden kalma geleneksel Çin bahçesi. Pavyonlar, göletler ve kayalar ile Çin bahçe sanatının mükemmel örneği.' },
+               { name: 'Nanjing Road', category: 'Alışveriş Caddesi', desc: 'Çin\'in en ünlü alışveriş caddesi. Neon ışıkları, mağazalar ve restoranlarla dolu olan bu cadde, Shanghai\'ın ticari kalbi.' },
+               { name: 'Shanghai Tower', category: 'Gökdelen', desc: '632 metre yüksekliğinde Çin\'in en yüksek binası. Spiral tasarımı ve sürdürülebilir mimarisiyle modern mühendisliğin harikası.' },
+               { name: 'Tianzifang', category: 'Sanat Mahallesi', desc: 'Geleneksel shikumen evlerinin sanat galerilerine dönüştürüldüğü bohemyen mahalle. Kafeler, butik mağazalar ve sanat atölyeleri.' },
+               { name: 'Huangpu Nehri', category: 'Nehir', desc: 'Shanghai\'ı ikiye bölen nehir. Gece tekne turları ile şehrin ışıklı siluetini izlemek unutulmaz bir deneyim.' },
+               { name: 'Jing\'an Temple', category: 'Tapınak', desc: 'Shanghai\'ın merkezindeki altın renkli Budist tapınak. Modern gökdelenler arasında yer alan bu tapınak, geçmiş ve gelecek arasında köprü kurar.' }
+             ]
+           };
+           
+           // Özel şehir verisi varsa onu kullan
+           const cityKey = cityName.toLowerCase();
+           if (specialCities[cityKey]) {
+             return specialCities[cityKey].map(place => ({
+               name: place.name,
+               city: cityName || 'Unknown City',
+               country: selectedCountry || 'GERMANY',
+               category: place.category,
+               description: place.desc,
+               visited: false,
+               createdAt: new Date()
+             }));
+           }
+           
+           const commonAttractions = [
+             { 
+               suffix: 'Merkez', 
+               category: 'Şehir Merkezi', 
+               desc: `${cityName} şehrinin kalbi ve ana meydanı. Tarihi binalar, cafeler ve restoranlarla çevrili olan bu bölge, şehrin sosyal ve kültürel yaşamının merkezi konumundadır. Yürüyüş yapmak ve yerel atmosferi hissetmek için ideal bir yerdir.` 
+             },
+             { 
+               suffix: 'Müzesi', 
+               category: 'Müze', 
+               desc: `${cityName} şehrinin yerel tarih ve kültür müzesi. Şehrin geçmişinden günümüze kadar uzanan zengin koleksiyonu ile ziyaretçilere bölgenin tarihini, sanatını ve kültürünü tanıma fırsatı sunar. Interaktif sergiler ve rehberli turlarla unutulmaz bir deneyim yaşayabilirsiniz.` 
+             },
+             { 
+               suffix: 'Katedrali', 
+               category: 'Dini Yapı', 
+               desc: `${cityName} şehrinin görkemli katedrali. Gotik mimarinin en güzel örneklerinden biri olan bu yapı, yüzyıllardır şehrin simgesi olmuştur. İçerisindeki vitray camlar, heykeller ve tarihi eserler görülmeye değerdir. Sessiz bir atmosferde ibadet edebilir veya mimariyi inceleyebilirsiniz.` 
+             },
+             { 
+               suffix: 'Kalesi', 
+               category: 'Tarihi Yapı', 
+               desc: `${cityName} şehrinin tarihi kalesi ve surları. Ortaçağ döneminden kalma bu muhteşem yapı, şehrin savunma tarihini gözler önüne serer. Kale duvarlarından şehrin panoramik manzarasını izleyebilir, tarihi odaları gezebilir ve geçmişe yolculuk yapabilirsiniz.` 
+             },
+             { 
+               suffix: 'Parkı', 
+               category: 'Park', 
+               desc: `${cityName} şehrinin en büyük ve en güzel parkı. Geniş yeşil alanları, yürüyüş yolları, göletleri ve çocuk oyun alanları ile ailecek vakit geçirmek için mükemmel bir yerdir. Piknik yapabilir, spor aktivitelerine katılabilir veya doğayla iç içe dinlenebilirsiniz.` 
+             },
+             { 
+               suffix: 'Çarşısı', 
+               category: 'Alışveriş', 
+               desc: `${cityName} şehrinin geleneksel çarşısı ve pazarı. Yerel ürünler, el sanatları, taze gıdalar ve hediyelik eşyalar bulabileceğiniz renkli bir alışveriş deneyimi sunar. Pazarlık yapabilir, yerel lezzetleri tadabilir ve şehrin ticari yaşamını yakından gözlemleyebilirsiniz.` 
+             },
+             { 
+               suffix: 'Köprüsü', 
+               category: 'Mimari', 
+               desc: `${cityName} şehrinin tarihi köprüsü. Mimari açıdan büyüleyici olan bu köprü, şehrin iki yakasını birleştiren önemli bir ulaşım noktasıdır. Köprü üzerinden nehir manzarasını izleyebilir, fotoğraf çekebilir ve şehrin farklı açılardan görünümünü keşfedebilirsiniz.` 
+             },
+             { 
+               suffix: 'Meydanı', 
+               category: 'Meydan', 
+               desc: `${cityName} şehrinin ana meydanı ve buluşma noktası. Çevresindeki tarihi binalar, heykeller ve çeşmelerle şehrin en canlı bölgelerinden biridir. Etkinlikler, festivaller ve konserler düzenlenen bu meydan, yerel halkla tanışmak ve şehrin nabzını hissetmek için ideal bir yerdir.` 
+             },
+             { 
+               suffix: 'Sarayı', 
+               category: 'Saray', 
+               desc: `${cityName} şehrinin muhteşem sarayı. Kraliyet ailelerinin yaşadığı bu görkemli yapı, lüks mobilyaları, değerli sanat eserleri ve büyüleyici bahçeleriyle ziyaretçilerini büyüler. Rehberli turlarla sarayın tarihini öğrenebilir ve aristokrat yaşamını keşfedebilirsiniz.` 
+             },
+             { 
+               suffix: 'Bahçesi', 
+               category: 'Bahçe', 
+               desc: `${cityName} şehrinin botanik bahçesi. Binlerce farklı bitki türü, egzotik çiçekler ve tematik bölümlerle doğa severlerin cenneti olan bu bahçe, huzurlu bir atmosfer sunar. Sera bölümlerini gezebilir, nadir bitkileri inceleyebilir ve doğanın güzelliğinde kaybolabilirsiniz.` 
+             }
+           ];
+           
+           return commonAttractions.map(attraction => ({
+             name: `${cityName || 'Unknown City'} ${attraction.suffix}`,
+             city: cityName || 'Unknown City',
+             country: (selectedCountry || 'GERMANY').toUpperCase(),
+             category: attraction.category,
+             description: attraction.desc,
+             visited: false,
+             createdAt: new Date()
+           }));
+         }
+
+         // Google Maps rota oluşturma fonksiyonu
+           function createGoogleMapsRoute() {
+            const checkboxes = document.querySelectorAll('.route-checkbox:checked');
+            if (checkboxes.length < 2) {
+              alert('Rota oluşturmak için en az 2 yer seçmelisiniz!');
+              return;
+            }
+            
+            const selectedPlaces = [];
+            checkboxes.forEach(checkbox => {
+              const name = checkbox.getAttribute('data-name');
+              const city = checkbox.getAttribute('data-city');
+              const country = checkbox.getAttribute('data-country');
+              selectedPlaces.push(`${name}, ${city}, ${country}`);
+            });
+            
+            if (selectedPlaces.length === 0) {
+              alert('Seçili yer bulunamadı!');
+              return;
+            }
+            
+            // Google Maps Directions URL oluştur
+            const origin = encodeURIComponent(selectedPlaces[0]);
+            const destination = encodeURIComponent(selectedPlaces[selectedPlaces.length - 1]);
+            let waypoints = '';
+            
+            if (selectedPlaces.length > 2) {
+              const middlePoints = selectedPlaces.slice(1, -1);
+              waypoints = '&waypoints=' + middlePoints.map(place => encodeURIComponent(place)).join('|');
+            }
+            
+            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints}&travelmode=driving`;
+            
+            // Yeni sekmede aç
+            window.open(googleMapsUrl, '_blank');
+          }
 
         // Filtre değişince tabloyu güncelle
         document.addEventListener('DOMContentLoaded', () => {
