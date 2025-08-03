@@ -51,18 +51,22 @@ exports.foursquare = functions.https.onRequest(async (req, res) => {
   console.log('Mock API çağrısı:', query);
   
   // Mock data ile test (gerçek API çalışana kadar)
-  const mockData = {
-    results: [
-      {
-        fsq_id: "berlin1",
-        name: "Brandenburg Gate",
-        location: {
-          country: "Germany",
-          formatted_address: "Pariser Platz, 10117 Berlin, Germany"
+  let mockData = { results: [] };
+  
+  // Berlin için mock data
+  if (query.toLowerCase().includes('berlin')) {
+    mockData = {
+      results: [
+        {
+          fsq_id: "berlin1",
+          name: "Brandenburg Gate",
+          location: {
+            country: "Germany",
+            formatted_address: "Pariser Platz, 10117 Berlin, Germany"
+          },
+          categories: [{ name: "Historic Site" }],
+          description: "Berlin'in en ünlü simgesi olan Brandenburg Kapısı"
         },
-        categories: [{ name: "Historic Site" }],
-        description: "Berlin'in en ünlü simgesi olan Brandenburg Kapısı"
-      },
       {
         fsq_id: "berlin2", 
         name: "Berlin Wall Memorial",
@@ -155,6 +159,115 @@ exports.foursquare = functions.https.onRequest(async (req, res) => {
       }
     ]
   };
+  }
+  
+  // İstanbul için mock data
+  if (query.toLowerCase().includes('istanbul')) {
+    mockData = {
+      results: [
+        {
+          fsq_id: "istanbul1",
+          name: "Ayasofya",
+          location: {
+            country: "Turkey",
+            formatted_address: "Sultan Ahmet, Ayasofya Meydanı, 34122 Fatih/İstanbul, Turkey"
+          },
+          categories: [{ name: "Historic Site" }],
+          description: "Bizans döneminden kalma tarihi yapı, şimdi müze olarak kullanılıyor"
+        },
+        {
+          fsq_id: "istanbul2",
+          name: "Sultanahmet Camii (Blue Mosque)",
+          location: {
+            country: "Turkey",
+            formatted_address: "Sultan Ahmet, Atmeydanı Cd. No:7, 34122 Fatih/İstanbul, Turkey"
+          },
+          categories: [{ name: "Religious Site" }],
+          description: "Mavi çinileriyle ünlü tarihi cami"
+        },
+        {
+          fsq_id: "istanbul3",
+          name: "Topkapı Sarayı",
+          location: {
+            country: "Turkey",
+            formatted_address: "Cankurtaran, 34122 Fatih/İstanbul, Turkey"
+          },
+          categories: [{ name: "Palace" }],
+          description: "Osmanlı İmparatorluğu'nun yönetim merkezi olan tarihi saray"
+        },
+        {
+          fsq_id: "istanbul4",
+          name: "Kapalıçarşı",
+          location: {
+            country: "Turkey",
+            formatted_address: "Beyazıt, Kalpakçılar Cd. No:22, 34126 Fatih/İstanbul, Turkey"
+          },
+          categories: [{ name: "Shopping Center" }],
+          description: "Dünyanın en büyük kapalı çarşılarından biri"
+        },
+        {
+          fsq_id: "istanbul5",
+          name: "Boğaziçi Köprüsü",
+          location: {
+            country: "Turkey",
+            formatted_address: "Ortaköy, 34347 Beşiktaş/İstanbul, Turkey"
+          },
+          categories: [{ name: "Bridge" }],
+          description: "Avrupa ve Asya kıtalarını birleştiren ikonik köprü"
+        },
+        {
+          fsq_id: "istanbul6",
+          name: "Galata Kulesi",
+          location: {
+            country: "Turkey",
+            formatted_address: "Bereketzade, Galata Kulesi Sk., 34421 Beyoğlu/İstanbul, Turkey"
+          },
+          categories: [{ name: "Tower" }],
+          description: "İstanbul'un en eski yapılarından biri, şehrin panoramik manzarasını sunuyor"
+        },
+        {
+          fsq_id: "istanbul7",
+          name: "Dolmabahçe Sarayı",
+          location: {
+            country: "Turkey",
+            formatted_address: "Vişnezade, Dolmabahçe Cd., 34357 Beşiktaş/İstanbul, Turkey"
+          },
+          categories: [{ name: "Palace" }],
+          description: "Boğaz kıyısında yer alan görkemli Osmanlı sarayı"
+        },
+        {
+          fsq_id: "istanbul8",
+          name: "Süleymaniye Camii",
+          location: {
+            country: "Turkey",
+            formatted_address: "Süleymaniye, Prof. Sıddık Sami Onar Cd. No:1, 34116 Fatih/İstanbul, Turkey"
+          },
+          categories: [{ name: "Religious Site" }],
+          description: "Mimar Sinan'ın başyapıtı olan tarihi cami"
+        },
+        {
+          fsq_id: "istanbul9",
+          name: "Yerebatan Sarnıcı",
+          location: {
+            country: "Turkey",
+            formatted_address: "Alemdar, Yerebatan Cd. 1/3, 34110 Fatih/İstanbul, Turkey"
+          },
+          categories: [{ name: "Historic Site" }],
+          description: "Bizans döneminden kalma yeraltı su sarnıcı"
+        },
+        {
+          fsq_id: "istanbul10",
+          name: "Ortaköy Camii",
+          location: {
+            country: "Turkey",
+            formatted_address: "Mecidiye, Mecidiye Köprüsü Sk., 34347 Beşiktaş/İstanbul, Turkey"
+          },
+          categories: [{ name: "Religious Site" }],
+          description: "Boğaz kıyısında yer alan zarif cami"
+        }
+      ]
+    };
+  }
   
   console.log('Mock data döndürülüyor:', mockData);
   res.json(mockData);

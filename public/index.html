@@ -1203,6 +1203,12 @@
            try {
              showStatus(`${location} için turistik yerler araştırılıyor...`, 'info');
              
+             // Türkiye için özel durum - şehir isimleri öner
+             if (location.toLowerCase() === 'türkiye' || location.toLowerCase() === 'turkey') {
+               showStatus('Türkiye için lütfen şehir adı girin (örn: İstanbul, Ankara, İzmir, Antalya, Kapadokya). Ülke geneli için çok fazla yer bulunur.', 'info');
+               return;
+             }
+             
              // Önce şehir kontrolü yap - şehir haritasında var mı?
              const detectedCountry = detectCountryFromCity(location);
              if (detectedCountry) {
@@ -1281,16 +1287,16 @@
              // Kullanıcıya bilgi ver
              showStatus(`${countryName} için turistik yerler araştırılıyor...`, 'info');
              
-             // Ülkenin en popüler turistik yerlerini oluştur
-             const places = await searchTouristPlacesForCountry(countryName);
+             // Foursquare API'den ülke için turistik yerler çek
+             const foursquarePlaces = await getFoursquarePlaces(countryName);
              
-             if (places && places.length >= 10) {
+             if (foursquarePlaces && foursquarePlaces.length >= 10) {
                return {
                  fileName: `dynamic-${countryName.toLowerCase().replace(/\s+/g, '-')}.json`,
-                 data: places
+                 data: foursquarePlaces
                };
              } else {
-               console.warn(`${countryName} için yeterli turistik yer bulunamadı:`, places?.length || 0);
+               console.warn(`${countryName} için yeterli turistik yer bulunamadı:`, foursquarePlaces?.length || 0);
                return null;
              }
            } catch (error) {
@@ -1602,7 +1608,11 @@
              console.log(`Foursquare API çağrısı başlatılıyor: ${cityName}`);
              
              // Firebase Functions kullanarak Foursquare API çağrısı
-             const response = await fetch(`https://us-central1-rotambenim.cloudfunctions.net/foursquare?query=${encodeURIComponent(cityName + ' tourist attractions landmarks')}`);
+             const queryString = cityName + ' tourist attractions landmarks';
+             const url = `https://us-central1-rotambenim.cloudfunctions.net/foursquare?query=${encodeURIComponent(queryString)}`;
+             console.log('Foursquare API URL:', url);
+             
+             const response = await fetch(url);
              
              console.log('Foursquare API response status:', response.status);
              
@@ -1643,8 +1653,26 @@
          // Şehirden ülke tespiti - Dünya çapında şehirler
          function detectCountryFromCity(cityName) {
            const cityCountryMap = {
-             // Almanya şehirleri
-             'aachen': 'germany', 'berlin': 'germany', 'münchen': 'germany', 'hamburg': 'germany', 
+             // Türkiye şehirleri
+             'istanbul': 'turkey', 'ankara': 'turkey', 'izmir': 'turkey', 'antalya': 'turkey',
+             'kapadokya': 'turkey', 'bursa': 'turkey', 'konya': 'turkey', 'trabzon': 'turkey',
+             'adana': 'turkey', 'gaziantep': 'turkey', 'kayseri': 'turkey', 'samsun': 'turkey',
+             'eskişehir': 'turkey', 'urfa': 'turkey', 'diyarbakır': 'turkey', 'malatya': 'turkey',
+             'erzurum': 'turkey', 'van': 'turkey', 'sivas': 'turkey', 'kastamonu': 'turkey',
+             'tokat': 'turkey', 'amasya': 'turkey', 'nevşehir': 'turkey', 'çanakkale': 'turkey',
+             'edirne': 'turkey', 'tekirdağ': 'turkey', 'kırklareli': 'turkey', 'balıkesir': 'turkey',
+             'manisa': 'turkey', 'aydın': 'turkey', 'muğla': 'turkey', 'denizli': 'turkey',
+             'afyon': 'turkey', 'kütahya': 'turkey', 'uşak': 'turkey', 'ısparta': 'turkey',
+             'burdur': 'turkey', 'antalya': 'turkey', 'mersin': 'turkey', 'adana': 'turkey',
+             'hatay': 'turkey', 'osmaniye': 'turkey', 'kahramanmaraş': 'turkey', 'gaziantep': 'turkey',
+             'kilis': 'turkey', 'şanlıurfa': 'turkey', 'adıyaman': 'turkey', 'malatya': 'turkey',
+             'elazığ': 'turkey', 'bingöl': 'turkey', 'tunceli': 'turkey', 'erzincan': 'turkey',
+             'erzurum': 'turkey', 'bayburt': 'turkey', 'gümüşhane': 'turkey', 'trabzon': 'turkey',
+             'rize': 'turkey', 'artvin': 'turkey', 'ardahan': 'turkey', 'kars': 'turkey',
+             'ağrı': 'turkey', 'ığdır': 'turkey', 'van': 'turkey', 'bitlis': 'turkey',
+             'muş': 'turkey', 'bingöl': 'turkey', 'diyarbakır': 'turkey', 'mardin': 'turkey',
+             'şırnak': 'turkey', 'batman': 'turkey', 'siirt': 'turkey', 'hakkari': 'turkey',
+             'almanya': 'germany', 'berlin': 'germany', 'münchen': 'germany', 'hamburg': 'germany', 
              'köln': 'germany', 'frankfurt': 'germany', 'stuttgart': 'germany', 'düsseldorf': 'germany',
              'dortmund': 'germany', 'essen': 'germany', 'leipzig': 'germany', 'bremen': 'germany',
              'dresden': 'germany', 'hannover': 'germany', 'nürnberg': 'germany', 'duisburg': 'germany',
@@ -2223,7 +2251,84 @@
                { name: 'Galata Kulesi', category: 'Kule', desc: 'Cenevizliler tarafından inşa edilen tarihi kule. İstanbul\'un 360 derece panoramik manzarasını sunan en güzel seyir noktası.' },
                { name: 'Boğaziçi', category: 'Doğal Güzellik', desc: 'Avrupa ve Asya\'yı birleştiren boğaz. Tekne turları, sahil yürüyüşleri ve köprü manzaraları ile İstanbul\'un en güzel yanı.' },
                { name: 'Basilika Sarnıcı', category: 'Tarihi Yapı', desc: 'Bizans döneminden kalma yeraltı sarnıcı. 336 sütunlu bu gizemli yapı, İstanbul\'un yeraltı hazinelerinden biri.' },
-               { name: 'Dolmabahçe Sarayı', category: 'Saray', desc: 'Osmanlı\'nın son dönem sarayı. Barok ve neoklasik mimarinin harmanlandığı bu görkemli saray, Boğaz kıyısında yer alır.' }
+               { name: 'Dolmabahçe Sarayı', category: 'Saray', desc: 'Osmanlı\'nın son dönem sarayı. Barok ve neoklasik mimarinin harmanlandığı bu görkemli saray, Boğaz kıyısında yer alır.' },
+               { name: 'Sultanahmet Meydanı', category: 'Meydan', desc: 'İstanbul\'un kalbi. Ayasofya, Sultanahmet Camii ve Hipodrom kalıntıları ile çevrili tarihi meydan.' },
+               { name: 'Yerebatan Sarnıcı', category: 'Tarihi Yapı', desc: 'Bizans döneminden kalma yeraltı sarnıcı. 336 sütunlu bu gizemli yapı, İstanbul\'un yeraltı hazinelerinden biri.' },
+               { name: 'Ortaköy Camii', category: 'Cami', desc: 'Boğaz kıyısında yer alan zarif cami. Boğaziçi Köprüsü manzarası ile ünlü.' },
+               { name: 'Süleymaniye Camii', category: 'Cami', desc: 'Mimar Sinan\'ın başyapıtı. İstanbul\'un en büyük camilerinden biri.' },
+               { name: 'Rumeli Hisarı', category: 'Kale', desc: 'Fatih Sultan Mehmet tarafından inşa edilen tarihi kale. Boğaz\'ın en güzel noktalarından biri.' },
+               { name: 'Anadolu Hisarı', category: 'Kale', desc: 'Osmanlı\'nın İstanbul\'u fethetmeden önce inşa ettiği kale. Boğaz manzarası ile ünlü.' },
+               { name: 'Beylerbeyi Sarayı', category: 'Saray', desc: 'Boğaz kıyısında yer alan görkemli saray. Osmanlı mimarisinin en güzel örneklerinden biri.' },
+               { name: 'Çırağan Sarayı', category: 'Saray', desc: 'Boğaz kıyısında yer alan lüks otel. Tarihi saray yapısı ve modern konforu birleştirir.' },
+               { name: 'Kız Kulesi', category: 'Kule', desc: 'Boğaz\'ın ortasında yer alan efsanevi kule. Romantik atmosferi ile ünlü.' },
+               { name: 'Taksim Meydanı', category: 'Meydan', desc: 'İstanbul\'un modern kalbi. İstiklal Caddesi\'nin başlangıç noktası.' },
+               { name: 'İstiklal Caddesi', category: 'Cadde', desc: 'İstanbul\'un en ünlü alışveriş ve eğlence caddesi. Nostaljik tramvayı ile ünlü.' },
+               { name: 'Pera Müzesi', category: 'Müze', desc: 'Beyoğlu\'nda yer alan modern sanat müzesi. Kültür ve sanat etkinliklerinin merkezi.' },
+               { name: 'Sakıp Sabancı Müzesi', category: 'Müze', desc: 'Boğaz kıyısında yer alan özel müze. Osmanlı ve çağdaş sanat koleksiyonları.' },
+               { name: 'İstanbul Modern', category: 'Müze', desc: 'Modern sanat müzesi. Çağdaş Türk sanatının en önemli eserlerini sergiler.' },
+               { name: 'Rahmi Koç Müzesi', category: 'Müze', desc: 'Endüstri ve teknoloji müzesi. Tarihi araçlar ve makineler sergilenir.' },
+               { name: 'Miniatürk', category: 'Müze', desc: 'Türkiye\'nin minyatür parkı. Ülkenin önemli yapılarının küçük kopyaları.' },
+               { name: 'Belgrad Ormanı', category: 'Park', desc: 'İstanbul\'un en büyük yeşil alanı. Yürüyüş ve piknik için ideal.' },
+               { name: 'Gülhane Parkı', category: 'Park', desc: 'Topkapı Sarayı\'nın bahçesi. Tarihi atmosferi ve güzel manzarası ile ünlü.' },
+               { name: 'Emirgan Korusu', category: 'Park', desc: 'Boğaz kıyısında yer alan koru. Lale bahçeleri ve piknik alanları ile ünlü.' },
+               { name: 'Bebek Sahili', category: 'Sahil', desc: 'Boğaz\'ın en güzel sahil şeridi. Kafeler ve restoranlar ile ünlü.' },
+               { name: 'Arnavutköy', category: 'Mahalle', desc: 'Boğaz kıyısında yer alan tarihi mahalle. Balık restoranları ile ünlü.' },
+               { name: 'Karaköy', category: 'Mahalle', desc: 'Tarihi liman mahallesi. Galata Köprüsü ve balıkçı tekneleri ile ünlü.' },
+               { name: 'Balat', category: 'Mahalle', desc: 'Tarihi mahalle. Renkli evleri ve otantik atmosferi ile ünlü.' },
+               { name: 'Fener', category: 'Mahalle', desc: 'Rum Ortodoks Patrikhanesi\'nin bulunduğu tarihi mahalle.' },
+               { name: 'Kadıköy', category: 'Mahalle', desc: 'Anadolu yakasının merkezi. Moda sahili ve canlı atmosferi ile ünlü.' },
+               { name: 'Üsküdar', category: 'Mahalle', desc: 'Anadolu yakasının tarihi merkezi. Mimar Sinan\'ın eserleri ile ünlü.' },
+               { name: 'Beşiktaş', category: 'Mahalle', desc: 'Boğaz kıyısında yer alan mahalle. Barbaros Anıtı ve sahili ile ünlü.' },
+               { name: 'Şişli', category: 'Mahalle', desc: 'Modern İstanbul\'un merkezi. Alışveriş merkezleri ve iş merkezleri ile ünlü.' },
+               { name: 'Bakırköy', category: 'Mahalle', desc: 'Marmara Denizi kıyısında yer alan mahalle. Sahili ve parkları ile ünlü.' }
+             ],
+             'ankara': [
+               { name: 'Anıtkabir', category: 'Anıt', desc: 'Mustafa Kemal Atatürk\'ün anıt mezarı. Türkiye\'nin en önemli simgelerinden biri.' },
+               { name: 'Kızılay Meydanı', category: 'Meydan', desc: 'Ankara\'nın merkezi. Alışveriş ve ulaşım merkezi.' },
+               { name: 'Ulus Meydanı', category: 'Meydan', desc: 'Tarihi Ankara\'nın merkezi. Kurtuluş Savaşı\'nın yönetildiği yer.' },
+               { name: 'Ankara Kalesi', category: 'Kale', desc: 'Roma döneminden kalma tarihi kale. Ankara\'nın en eski yapısı.' },
+               { name: 'Hacı Bayram-ı Veli Camii', category: 'Cami', desc: 'Ankara\'nın en önemli dini yapısı. Hacı Bayram-ı Veli\'nin türbesi.' },
+               { name: 'Anadolu Medeniyetleri Müzesi', category: 'Müze', desc: 'Dünyanın en önemli arkeoloji müzelerinden biri.' },
+               { name: 'Etnografya Müzesi', category: 'Müze', desc: 'Türk kültürü ve etnografyası müzesi.' },
+               { name: 'Atakule', category: 'Kule', desc: 'Ankara\'nın simgesi olan televizyon kulesi.' },
+               { name: 'Gençlik Parkı', category: 'Park', desc: 'Ankara\'nın en büyük parkı. Lunapark ve gölü ile ünlü.' },
+               { name: 'Kuğulu Park', category: 'Park', desc: 'Kuğuları ile ünlü park. Ankara\'nın en güzel parklarından biri.' }
+             ],
+             'izmir': [
+               { name: 'Kemeraltı Çarşısı', category: 'Çarşı', desc: 'İzmir\'in tarihi çarşısı. Geleneksel alışveriş merkezi.' },
+               { name: 'Konak Meydanı', category: 'Meydan', desc: 'İzmir\'in kalbi. Saat Kulesi ile ünlü.' },
+               { name: 'Saat Kulesi', category: 'Anıt', desc: 'İzmir\'in simgesi olan tarihi saat kulesi.' },
+               { name: 'Kadifekale', category: 'Kale', desc: 'İzmir\'in yüksek tepesinde yer alan tarihi kale.' },
+               { name: 'Alsancak', category: 'Mahalle', desc: 'İzmir\'in modern mahallesi. Kordon boyu ile ünlü.' },
+               { name: 'Kordon', category: 'Sahil', desc: 'İzmir\'in en güzel sahil şeridi. Yürüyüş ve dinlenme yeri.' },
+               { name: 'Bornova', category: 'Mahalle', desc: 'Ege Üniversitesi\'nin bulunduğu mahalle.' },
+               { name: 'Çeşme', category: 'Sahil', desc: 'İzmir\'in en güzel plajlarından biri.' },
+               { name: 'Alaçatı', category: 'Mahalle', desc: 'Rüzgar sörfü ile ünlü sahil kasabası.' },
+               { name: 'Foça', category: 'Sahil', desc: 'Antik İyon kenti. Güzel plajları ile ünlü.' }
+             ],
+             'antalya': [
+               { name: 'Kaleiçi', category: 'Tarihi Mahalle', desc: 'Antalya\'nın tarihi merkezi. Dar sokakları ve tarihi evleri ile ünlü.' },
+               { name: 'Yivli Minare', category: 'Cami', desc: 'Antalya\'nın simgesi olan tarihi minare.' },
+               { name: 'Hadrian Kapısı', category: 'Tarihi Yapı', desc: 'Roma döneminden kalma zafer takı.' },
+               { name: 'Konyaaltı Plajı', category: 'Plaj', desc: 'Antalya\'nın en güzel plajlarından biri.' },
+               { name: 'Lara Plajı', category: 'Plaj', desc: 'Uzun kumsalı ile ünlü plaj.' },
+               { name: 'Düden Şelalesi', category: 'Doğal Güzellik', desc: 'Antalya\'nın en güzel şelalelerinden biri.' },
+               { name: 'Kurşunlu Şelalesi', category: 'Doğal Güzellik', desc: 'Doğal güzelliği ile ünlü şelale.' },
+               { name: 'Aspendos Tiyatrosu', category: 'Antik Tiyatro', desc: 'Roma döneminden kalma antik tiyatro.' },
+               { name: 'Perge Antik Kenti', category: 'Antik Kent', desc: 'Antik dönemden kalma önemli kent.' },
+               { name: 'Side Antik Kenti', category: 'Antik Kent', desc: 'Antik dönemden kalma liman kenti.' }
+             ],
+             'kapadokya': [
+               { name: 'Göreme Açık Hava Müzesi', category: 'Müze', desc: 'UNESCO Dünya Mirası. Kaya kiliseleri ve freskleri ile ünlü.' },
+               { name: 'Peribacaları', category: 'Doğal Güzellik', desc: 'Kapadokya\'nın simgesi olan doğal kaya oluşumları.' },
+               { name: 'Uçhisar Kalesi', category: 'Kale', desc: 'Kapadokya\'nın en yüksek noktası. Panoramik manzara.' },
+               { name: 'Ortahisar Kalesi', category: 'Kale', desc: 'Tarihi kale. Kapadokya manzarası.' },
+               { name: 'Ürgüp', category: 'Mahalle', desc: 'Kapadokya\'nın merkezi. Turistik kasaba.' },
+               { name: 'Avanos', category: 'Mahalle', desc: 'Çömlekçilik ile ünlü kasaba.' },
+               { name: 'Zelve Vadisi', category: 'Doğal Güzellik', desc: 'Tarihi kaya yerleşimleri.' },
+               { name: 'Ihlara Vadisi', category: 'Doğal Güzellik', desc: 'Yürüyüş rotası ve kaya kiliseleri.' },
+               { name: 'Derinkuyu Yeraltı Şehri', category: 'Tarihi Yapı', desc: 'Antik dönemden kalma yeraltı yerleşimi.' },
+               { name: 'Kaymaklı Yeraltı Şehri', category: 'Tarihi Yapı', desc: 'Geniş yeraltı şehri.' }
              ],
              'beijing': [
                { name: 'Yasak Şehir', category: 'Saray', desc: 'Ming ve Qing hanedanlarının 500 yıl boyunca yaşadığı görkemli saray kompleksi. 9999 odası ile dünyanın en büyük saray kompleksi.' },
