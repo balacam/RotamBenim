@@ -47,17 +47,43 @@ exports.foursquare = functions.https.onRequest(async (req, res) => {
 
   const query = req.query.query;
   if (!query) return res.status(400).json({ error: "query param required" });
+  
+  console.log('Foursquare API çağrısı:', query);
+  
   try {
-    const url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&limit=10&fields=fsq_id,name,location,categories,description`;
+    const url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&limit=20&fields=fsq_id,name,location,categories,description,rating`;
+    console.log('Foursquare URL:', url);
+    
     const resp = await fetch(url, {
       headers: {
         Accept: "application/json",
         Authorization: FOURSQUARE_API_KEY,
       },
     });
+    
+    console.log('Foursquare response status:', resp.status);
+    
+    if (!resp.ok) {
+      console.error('Foursquare API error:', resp.status, resp.statusText);
+      return res.status(resp.status).json({ error: `Foursquare API error: ${resp.status}` });
+    }
+    
     const data = await resp.json();
+    console.log('Foursquare response data:', JSON.stringify(data, null, 2));
+    
     res.json(data);
   } catch (err) {
+    console.error('Foursquare API catch error:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// Test endpoint
+exports.test = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.json({ 
+    message: 'Firebase Functions çalışıyor!',
+    apiKey: FOURSQUARE_API_KEY ? 'API Key mevcut' : 'API Key eksik',
+    timestamp: new Date().toISOString()
+  });
 });
