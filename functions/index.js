@@ -49,6 +49,7 @@ exports.foursquare = functions.https.onRequest(async (req, res) => {
   if (!query) return res.status(400).json({ error: "query param required" });
   
   console.log('Mock API çağrısı:', query);
+  console.log('Query içeriği:', query.toLowerCase());
   
   // Mock data ile test (gerçek API çalışana kadar)
   let mockData = { results: [] };
@@ -163,6 +164,7 @@ exports.foursquare = functions.https.onRequest(async (req, res) => {
   
   // İstanbul için mock data
   if (query.toLowerCase().includes('istanbul')) {
+    console.log('İstanbul için mock data döndürülüyor');
     mockData = {
       results: [
         {
