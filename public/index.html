@@ -1491,6 +1491,36 @@
          // Şehir yerlerini ekle (şehirler için minimum yer kontrolü yok)
          async function addCityPlaces(user, cityName) {
            try {
+             // Önce Foursquare API'den dinamik veri çek
+             showStatus(`${cityName} için Foursquare'den turistik yerler aranıyor...`, 'info');
+             
+             const foursquarePlaces = await getFoursquarePlaces(cityName);
+             
+             if (foursquarePlaces && foursquarePlaces.length > 0) {
+               // Foursquare'den gelen verileri kullan
+               showStatus(`${cityName} için ${foursquarePlaces.length} turistik yer bulundu. Ekleniyor...`, 'info');
+               
+               let addedCount = 0;
+               for (const place of foursquarePlaces) {
+                 const placeExists = await checkIfPlaceExists(user, place.name, place.city);
+                 if (!placeExists) {
+                   await addDoc(collection(db, 'users', user.uid, 'places'), place);
+                   addedCount++;
+                 }
+               }
+               
+               if (addedCount > 0) {
+                 showStatus(`${cityName} için ${addedCount} yeni turistik yer başarıyla eklendi!`, 'success');
+               } else {
+                 showStatus(`${cityName} için tüm yerler zaten mevcut.`, 'info');
+               }
+               loadPlacesTable(user);
+               return;
+             }
+             
+             // Eğer Foursquare'den veri gelmezse, eski sistemi kullan
+             showStatus(`${cityName} için yerel veritabanından yerler aranıyor...`, 'info');
+             
              // Var olan yerleri kontrol et
              const existingPlaces = await checkExistingPlaces(user, cityName);
              if (existingPlaces.length > 0) {
@@ -1546,6 +1576,42 @@
            } catch (error) {
              console.error(`${cityName} şehir yerleri eklenirken hata:`, error);
              showStatus(`${cityName} için yerler eklenirken hata oluştu: ${error.message}`, 'error');
+           }
+         }
+         
+         // Foursquare API'den turistik yerler çek
+         async function getFoursquarePlaces(cityName) {
+           try {
+             // Firebase Functions kullanarak Foursquare API çağrısı
+             const response = await fetch(`https://us-central1-rotambenim.cloudfunctions.net/foursquare?query=${encodeURIComponent(cityName + ' tourist attractions landmarks')}`);
+             
+             if (!response.ok) {
+               console.error('Foursquare API hatası:', response.status);
+               return null;
+             }
+             
+             const data = await response.json();
+             
+             if (data.results && data.results.length > 0) {
+               return data.results.map(place => ({
+                 name: place.name || 'Unknown Place',
+                 city: cityName,
+                 country: place.location?.country || 'Unknown Country',
+                 category: place.categories?.[0]?.name || 'Turistik Yer',
+                 description: place.description || `${cityName} şehrinin turistik yerlerinden biri. Foursquare'den alınan veri.`,
+                 visited: false,
+                 createdAt: new Date(),
+                 source: 'foursquare',
+                 fsq_id: place.fsq_id,
+                 address: place.location?.formatted_address || '',
+                 rating: place.rating || null
+               }));
+             }
+             
+             return null;
+           } catch (error) {
+             console.error('Foursquare API çağrısı hatası:', error);
+             return null;
            }
          }
          

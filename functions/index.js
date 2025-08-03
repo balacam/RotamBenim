@@ -31,7 +31,7 @@ setGlobalOptions({ maxInstances: 10 });
 //   response.send("Hello from Firebase!");
 // });
 
-const FOURSQUARE_API_KEY = "KYBXYAYEUUUXNI1ZLT2IYEKKVZI0M441TUVGCPOW1LCOCAFS";
+const FOURSQUARE_API_KEY = "JOU3DLQL13TMVPJANZOG10AAJJKRCCYG0CW3HDSWTIIJ45ZD";
 
 exports.foursquare = functions.https.onRequest(async (req, res) => {
   // CORS header ekle
