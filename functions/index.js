@@ -57,7 +57,7 @@ exports.foursquare = functions.https.onRequest(async (req, res) => {
     const resp = await fetch(url, {
       headers: {
         Accept: "application/json",
-        Authorization: FOURSQUARE_API_KEY,
+        Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
       },
     });
     
