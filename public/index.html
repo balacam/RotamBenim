@@ -274,6 +274,10 @@
             
             <!-- Filtreler -->
             <div id="filters" style="display: flex; gap: 16px; justify-content: flex-start; align-items: center; margin-bottom: 18px; margin-top: 18px; position: relative;">
+              <select id="languageFilter" style="min-width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="tr">Türkçe</option>
+                <option value="en">English</option>
+              </select>
               <select id="countryFilter" style="min-width: 140px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
               <label for="visitedFilter">Ziyaret:</label>
               <select id="visitedFilter" style="min-width: 120px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
@@ -356,8 +360,12 @@
         const placesTableBody = document.querySelector('#placesTable tbody');
         const addPlaceBtn = document.getElementById('addPlaceBtn');
         const searchBox = document.getElementById('searchBox');
+        const languageFilter = document.getElementById('languageFilter');
         let suggestionResults = [];
         const GEONAMES_USERNAME = "b.alacam";
+        
+        // Dil ayarları
+        let currentLanguage = 'tr';
 
         // Ülke isimleri mapping (tr/en)
         const countryNames = {
@@ -1531,13 +1539,6 @@
              // Eğer Foursquare'den veri gelmezse, eski sistemi kullan
              showStatus(`${cityName} için yerel veritabanından yerler aranıyor...`, 'info');
              
-             // Var olan yerleri kontrol et
-             const existingPlaces = await checkExistingPlaces(user, cityName);
-             if (existingPlaces.length > 0) {
-               showStatus(`${cityName} için yerler zaten eklenmiştir. ${existingPlaces.length} yer mevcut.`, 'info');
-               return;
-             }
-             
              // Şehir için ülke tespiti
              const detectedCountry = detectCountryFromCity(cityName);
              
@@ -1627,11 +1628,11 @@
              if (data.results && data.results.length > 0) {
                console.log(`Foursquare'den ${data.results.length} yer bulundu`);
                return data.results.map(place => ({
-                 name: place.name || 'Unknown Place',
+                 name: place.name || 'Bilinmeyen Yer',
                  city: cityName,
-                 country: place.location?.country || 'Unknown Country',
-                 category: place.categories?.[0]?.name || 'Turistik Yer',
-                 description: place.description || `${cityName} şehrinin turistik yerlerinden biri. Foursquare'den alınan veri.`,
+                 country: place.location?.country || 'Bilinmeyen Ülke',
+                 category: translateCategory(place.categories?.[0]?.name) || 'Turistik Yer',
+                 description: generateDetailedDescription(place, cityName),
                  visited: false,
                  createdAt: new Date(),
                  source: 'foursquare',
@@ -1648,6 +1649,515 @@
              console.error('Foursquare API çağrısı hatası:', error);
              return null;
            }
+         }
+         
+         // Kategori çeviri fonksiyonu
+         function translateCategory(englishCategory) {
+           const categoryTranslations = {
+             tr: {
+               'Landmark': 'Tarihi Yapı',
+               'Historic Site': 'Tarihi Yer',
+               'Museum': 'Müze',
+               'Park': 'Park',
+               'Restaurant': 'Restoran',
+               'Cafe': 'Kafe',
+               'Bar': 'Bar',
+               'Hotel': 'Otel',
+               'Shopping Center': 'Alışveriş Merkezi',
+               'Church': 'Kilise',
+               'Mosque': 'Cami',
+               'Temple': 'Tapınak',
+               'Palace': 'Saray',
+               'Castle': 'Kale',
+               'Bridge': 'Köprü',
+               'Tower': 'Kule',
+               'Monument': 'Anıt',
+               'Statue': 'Heykel',
+               'Fountain': 'Çeşme',
+               'Garden': 'Bahçe',
+               'Beach': 'Sahil',
+               'Mountain': 'Dağ',
+               'Lake': 'Göl',
+               'River': 'Nehir',
+               'Forest': 'Orman',
+               'Cave': 'Mağara',
+               'Waterfall': 'Şelale',
+               'Island': 'Ada',
+               'Harbor': 'Liman',
+               'Airport': 'Havalimanı',
+               'Train Station': 'Tren İstasyonu',
+               'Bus Station': 'Otobüs Durağı',
+               'Metro Station': 'Metro İstasyonu',
+               'University': 'Üniversite',
+               'School': 'Okul',
+               'Library': 'Kütüphane',
+               'Hospital': 'Hastane',
+               'Police Station': 'Polis Karakolu',
+               'Fire Station': 'İtfaiye',
+               'Post Office': 'Postane',
+               'Bank': 'Banka',
+               'Pharmacy': 'Eczane',
+               'Gas Station': 'Benzin İstasyonu',
+               'Car Wash': 'Oto Yıkama',
+               'Parking': 'Otopark',
+               'ATM': 'Banka ATM',
+               'Tourist Information': 'Turizm Bilgi',
+               'Travel Agency': 'Seyahat Acentesi',
+               'Hostel': 'Pansiyon',
+               'Guest House': 'Misafirhane',
+               'Apartment': 'Apartman',
+               'Villa': 'Villa',
+               'Resort': 'Tatil Köyü',
+               'Spa': 'Spa',
+               'Gym': 'Spor Salonu',
+               'Swimming Pool': 'Yüzme Havuzu',
+               'Tennis Court': 'Tenis Kortu',
+               'Golf Course': 'Golf Sahası',
+               'Ski Resort': 'Kayak Merkezi',
+               'Amusement Park': 'Eğlence Parkı',
+               'Zoo': 'Hayvanat Bahçesi',
+               'Aquarium': 'Akvaryum',
+               'Planetarium': 'Gezegen Evi',
+               'Observatory': 'Gözlemevi',
+               'Botanical Garden': 'Botanik Bahçe',
+               'Arboretum': 'Ağaç Müzesi',
+               'Conservatory': 'Konservatuvar',
+               'Theater': 'Tiyatro',
+               'Cinema': 'Sinema',
+               'Concert Hall': 'Konser Salonu',
+               'Opera House': 'Opera Binası',
+               'Stadium': 'Stadyum',
+               'Arena': 'Arena',
+               'Race Track': 'Yarış Pisti',
+               'Marina': 'Marina',
+               'Yacht Club': 'Yat Kulübü',
+               'Fishing Spot': 'Balık Tutma Yeri',
+               'Hiking Trail': 'Yürüyüş Yolu',
+               'Bike Path': 'Bisiklet Yolu',
+               'Climbing Wall': 'Tırmanma Duvarı',
+               'Skate Park': 'Kaykay Parkı',
+               'Playground': 'Oyun Alanı',
+               'Sports Complex': 'Spor Kompleksi',
+               'Fitness Center': 'Fitness Merkezi',
+               'Yoga Studio': 'Yoga Stüdyosu',
+               'Pilates Studio': 'Pilates Stüdyosu',
+               'Dance Studio': 'Dans Stüdyosu',
+               'Art Gallery': 'Sanat Galerisi',
+               'Antique Shop': 'Antika Dükkanı',
+               'Jewelry Store': 'Kuyumcu',
+               'Bookstore': 'Kitapçı',
+               'Music Store': 'Müzik Mağazası',
+               'Electronics Store': 'Elektronik Mağazası',
+               'Clothing Store': 'Giyim Mağazası',
+               'Shoe Store': 'Ayakkabı Mağazası',
+               'Department Store': 'Mağaza',
+               'Supermarket': 'Süpermarket',
+               'Market': 'Pazar',
+               'Bakery': 'Fırın',
+               'Butcher': 'Kasap',
+               'Fish Market': 'Balık Pazarı',
+               'Flower Shop': 'Çiçekçi',
+               'Gift Shop': 'Hediye Mağazası',
+               'Souvenir Shop': 'Hatıra Eşya Mağazası',
+               'Tattoo Parlor': 'Dövme Salonu',
+               'Hair Salon': 'Kuaför',
+               'Beauty Salon': 'Güzellik Salonu',
+               'Nail Salon': 'Tırnak Salonu',
+               'Massage Parlor': 'Masaj Salonu',
+               'Dental Clinic': 'Diş Kliniği',
+               'Medical Clinic': 'Tıp Kliniği',
+               'Veterinary Clinic': 'Veteriner Kliniği',
+               'Pet Store': 'Evcil Hayvan Mağazası',
+               'Hardware Store': 'Hırdavatçı',
+               'Home Improvement Store': 'Ev Geliştirme Mağazası',
+               'Furniture Store': 'Mobilya Mağazası',
+               'Garden Center': 'Bahçe Merkezi',
+               'Nursery': 'Fide Yeri',
+               'Greenhouse': 'Sera',
+               'Farm': 'Çiftlik',
+               'Vineyard': 'Bağ',
+               'Winery': 'Şarap Evi',
+               'Brewery': 'Bira Evi',
+               'Distillery': 'Rakı Evi',
+               'Factory': 'Fabrika',
+               'Warehouse': 'Depo',
+               'Office Building': 'Ofis Binası',
+               'Shopping Mall': 'AVM',
+               'Outlet': 'Outlet',
+               'Flea Market': 'Bit Pazarı',
+               'Street Market': 'Sokak Pazarı',
+               'Food Court': 'Yemek Merkezi',
+               'Food Truck': 'Yemek Kamyonu',
+               'Street Food': 'Sokak Yemeği',
+               'Fast Food': 'Fast Food',
+               'Pizza Place': 'Pizza Yeri',
+               'Burger Joint': 'Burgerci',
+               'Sushi Restaurant': 'Suşi Restoranı',
+               'Thai Restaurant': 'Tay Restoranı',
+               'Chinese Restaurant': 'Çin Restoranı',
+               'Japanese Restaurant': 'Japon Restoranı',
+               'Korean Restaurant': 'Kore Restoranı',
+               'Indian Restaurant': 'Hint Restoranı',
+               'Mexican Restaurant': 'Meksika Restoranı',
+               'Italian Restaurant': 'İtalyan Restoranı',
+               'French Restaurant': 'Fransız Restoranı',
+               'Greek Restaurant': 'Yunan Restoranı',
+               'Turkish Restaurant': 'Türk Restoranı',
+               'Lebanese Restaurant': 'Lübnan Restoranı',
+               'Moroccan Restaurant': 'Fas Restoranı',
+               'Spanish Restaurant': 'İspanyol Restoranı',
+               'Portuguese Restaurant': 'Portekiz Restoranı',
+               'German Restaurant': 'Alman Restoranı',
+               'Austrian Restaurant': 'Avusturya Restoranı',
+               'Swiss Restaurant': 'İsviçre Restoranı',
+               'Dutch Restaurant': 'Hollanda Restoranı',
+               'Belgian Restaurant': 'Belçika Restoranı',
+               'Polish Restaurant': 'Polonya Restoranı',
+               'Czech Restaurant': 'Çek Restoranı',
+               'Hungarian Restaurant': 'Macar Restoranı',
+               'Romanian Restaurant': 'Romanya Restoranı',
+               'Bulgarian Restaurant': 'Bulgar Restoranı',
+               'Serbian Restaurant': 'Sırp Restoranı',
+               'Croatian Restaurant': 'Hırvat Restoranı',
+               'Slovenian Restaurant': 'Sloven Restoranı',
+               'Slovak Restaurant': 'Slovak Restoranı',
+               'Ukrainian Restaurant': 'Ukrayna Restoranı',
+               'Russian Restaurant': 'Rus Restoranı',
+               'Georgian Restaurant': 'Gürcü Restoranı',
+               'Armenian Restaurant': 'Ermeni Restoranı',
+               'Azerbaijani Restaurant': 'Azerbaycan Restoranı',
+               'Iranian Restaurant': 'İran Restoranı',
+               'Iraqi Restaurant': 'Irak Restoranı',
+               'Syrian Restaurant': 'Suriye Restoranı',
+               'Jordanian Restaurant': 'Ürdün Restoranı',
+               'Israeli Restaurant': 'İsrail Restoranı',
+               'Palestinian Restaurant': 'Filistin Restoranı',
+               'Egyptian Restaurant': 'Mısır Restoranı',
+               'Libyan Restaurant': 'Libya Restoranı',
+               'Tunisian Restaurant': 'Tunus Restoranı',
+               'Algerian Restaurant': 'Cezayir Restoranı',
+               'Mauritanian Restaurant': 'Moritanya Restoranı',
+               'Senegalese Restaurant': 'Senegal Restoranı',
+               'Gambian Restaurant': 'Gambiya Restoranı',
+               'Guinea-Bissau Restaurant': 'Gine-Bissau Restoranı',
+               'Guinean Restaurant': 'Gine Restoranı',
+               'Sierra Leonean Restaurant': 'Sierra Leone Restoranı',
+               'Liberian Restaurant': 'Liberya Restoranı',
+               'Ivorian Restaurant': 'Fildişi Sahili Restoranı',
+               'Ghanaian Restaurant': 'Gana Restoranı',
+               'Togolese Restaurant': 'Togo Restoranı',
+               'Beninese Restaurant': 'Benin Restoranı',
+               'Nigerian Restaurant': 'Nijerya Restoranı',
+               'Cameroonian Restaurant': 'Kamerun Restoranı',
+               'Chadian Restaurant': 'Çad Restoranı',
+               'Central African Restaurant': 'Orta Afrika Restoranı',
+               'Equatorial Guinean Restaurant': 'Ekvator Ginesi Restoranı',
+               'Gabonese Restaurant': 'Gabon Restoranı',
+               'Congolese Restaurant': 'Kongo Restoranı',
+               'Democratic Republic of the Congo Restaurant': 'Demokratik Kongo Cumhuriyeti Restoranı',
+               'Angolan Restaurant': 'Angola Restoranı',
+               'Zambian Restaurant': 'Zambiya Restoranı',
+               'Malawian Restaurant': 'Malavi Restoranı',
+               'Mozambican Restaurant': 'Mozambik Restoranı',
+               'Zimbabwean Restaurant': 'Zimbabve Restoranı',
+               'Botswanan Restaurant': 'Botsvana Restoranı',
+               'Namibian Restaurant': 'Namibya Restoranı',
+               'South African Restaurant': 'Güney Afrika Restoranı',
+               'Lesothoan Restaurant': 'Lesotho Restoranı',
+               'Eswatini Restaurant': 'Esvatini Restoranı',
+               'Madagascan Restaurant': 'Madagaskar Restoranı',
+               'Comorian Restaurant': 'Komor Restoranı',
+               'Mauritian Restaurant': 'Mauritius Restoranı',
+               'Seychellois Restaurant': 'Seyşel Restoranı',
+               'Djiboutian Restaurant': 'Cibuti Restoranı',
+               'Eritrean Restaurant': 'Eritre Restoranı',
+               'Ethiopian Restaurant': 'Etiyopya Restoranı',
+               'Somali Restaurant': 'Somali Restoranı',
+               'Kenyan Restaurant': 'Kenya Restoranı',
+               'Ugandan Restaurant': 'Uganda Restoranı',
+               'Tanzanian Restaurant': 'Tanzanya Restoranı',
+               'Rwandan Restaurant': 'Ruanda Restoranı',
+               'Burundian Restaurant': 'Burundi Restoranı',
+               'South Sudanese Restaurant': 'Güney Sudan Restoranı',
+               'Sudanese Restaurant': 'Sudan Restoranı'
+             },
+             en: {
+               'Landmark': 'Landmark',
+               'Historic Site': 'Historic Site',
+               'Museum': 'Museum',
+               'Park': 'Park',
+               'Restaurant': 'Restaurant',
+               'Cafe': 'Cafe',
+               'Bar': 'Bar',
+               'Hotel': 'Hotel',
+               'Shopping Center': 'Shopping Center',
+               'Church': 'Church',
+               'Mosque': 'Mosque',
+               'Temple': 'Temple',
+               'Palace': 'Palace',
+               'Castle': 'Castle',
+               'Bridge': 'Bridge',
+               'Tower': 'Tower',
+               'Monument': 'Monument',
+               'Statue': 'Statue',
+               'Fountain': 'Fountain',
+               'Garden': 'Garden',
+               'Beach': 'Beach',
+               'Mountain': 'Mountain',
+               'Lake': 'Lake',
+               'River': 'River',
+               'Forest': 'Forest',
+               'Cave': 'Cave',
+               'Waterfall': 'Waterfall',
+               'Island': 'Island',
+               'Harbor': 'Harbor',
+               'Airport': 'Airport',
+               'Train Station': 'Train Station',
+               'Bus Station': 'Bus Station',
+               'Metro Station': 'Metro Station',
+               'University': 'University',
+               'School': 'School',
+               'Library': 'Library',
+               'Hospital': 'Hospital',
+               'Police Station': 'Police Station',
+               'Fire Station': 'Fire Station',
+               'Post Office': 'Post Office',
+               'Bank': 'Bank',
+               'Pharmacy': 'Pharmacy',
+               'Gas Station': 'Gas Station',
+               'Car Wash': 'Car Wash',
+               'Parking': 'Parking',
+               'ATM': 'ATM',
+               'Tourist Information': 'Tourist Information',
+               'Travel Agency': 'Travel Agency',
+               'Hostel': 'Hostel',
+               'Guest House': 'Guest House',
+               'Apartment': 'Apartment',
+               'Villa': 'Villa',
+               'Resort': 'Resort',
+               'Spa': 'Spa',
+               'Gym': 'Gym',
+               'Swimming Pool': 'Swimming Pool',
+               'Tennis Court': 'Tennis Court',
+               'Golf Course': 'Golf Course',
+               'Ski Resort': 'Ski Resort',
+               'Amusement Park': 'Amusement Park',
+               'Zoo': 'Zoo',
+               'Aquarium': 'Aquarium',
+               'Planetarium': 'Planetarium',
+               'Observatory': 'Observatory',
+               'Botanical Garden': 'Botanical Garden',
+               'Arboretum': 'Arboretum',
+               'Conservatory': 'Conservatory',
+               'Theater': 'Theater',
+               'Cinema': 'Cinema',
+               'Concert Hall': 'Concert Hall',
+               'Opera House': 'Opera House',
+               'Stadium': 'Stadium',
+               'Arena': 'Arena',
+               'Race Track': 'Race Track',
+               'Marina': 'Marina',
+               'Yacht Club': 'Yacht Club',
+               'Fishing Spot': 'Fishing Spot',
+               'Hiking Trail': 'Hiking Trail',
+               'Bike Path': 'Bike Path',
+               'Climbing Wall': 'Climbing Wall',
+               'Skate Park': 'Skate Park',
+               'Playground': 'Playground',
+               'Sports Complex': 'Sports Complex',
+               'Fitness Center': 'Fitness Center',
+               'Yoga Studio': 'Yoga Studio',
+               'Pilates Studio': 'Pilates Studio',
+               'Dance Studio': 'Dance Studio',
+               'Art Gallery': 'Art Gallery',
+               'Antique Shop': 'Antique Shop',
+               'Jewelry Store': 'Jewelry Store',
+               'Bookstore': 'Bookstore',
+               'Music Store': 'Music Store',
+               'Electronics Store': 'Electronics Store',
+               'Clothing Store': 'Clothing Store',
+               'Shoe Store': 'Shoe Store',
+               'Department Store': 'Department Store',
+               'Supermarket': 'Supermarket',
+               'Market': 'Market',
+               'Bakery': 'Bakery',
+               'Butcher': 'Butcher',
+               'Fish Market': 'Fish Market',
+               'Flower Shop': 'Flower Shop',
+               'Gift Shop': 'Gift Shop',
+               'Souvenir Shop': 'Souvenir Shop',
+               'Tattoo Parlor': 'Tattoo Parlor',
+               'Hair Salon': 'Hair Salon',
+               'Beauty Salon': 'Beauty Salon',
+               'Nail Salon': 'Nail Salon',
+               'Massage Parlor': 'Massage Parlor',
+               'Dental Clinic': 'Dental Clinic',
+               'Medical Clinic': 'Medical Clinic',
+               'Veterinary Clinic': 'Veterinary Clinic',
+               'Pet Store': 'Pet Store',
+               'Hardware Store': 'Hardware Store',
+               'Home Improvement Store': 'Home Improvement Store',
+               'Furniture Store': 'Furniture Store',
+               'Garden Center': 'Garden Center',
+               'Nursery': 'Nursery',
+               'Greenhouse': 'Greenhouse',
+               'Farm': 'Farm',
+               'Vineyard': 'Vineyard',
+               'Winery': 'Winery',
+               'Brewery': 'Brewery',
+               'Distillery': 'Distillery',
+               'Factory': 'Factory',
+               'Warehouse': 'Warehouse',
+               'Office Building': 'Office Building',
+               'Shopping Mall': 'Shopping Mall',
+               'Outlet': 'Outlet',
+               'Flea Market': 'Flea Market',
+               'Street Market': 'Street Market',
+               'Food Court': 'Food Court',
+               'Food Truck': 'Food Truck',
+               'Street Food': 'Street Food',
+               'Fast Food': 'Fast Food',
+               'Pizza Place': 'Pizza Place',
+               'Burger Joint': 'Burger Joint',
+               'Sushi Restaurant': 'Sushi Restaurant',
+               'Thai Restaurant': 'Thai Restaurant',
+               'Chinese Restaurant': 'Chinese Restaurant',
+               'Japanese Restaurant': 'Japanese Restaurant',
+               'Korean Restaurant': 'Korean Restaurant',
+               'Indian Restaurant': 'Indian Restaurant',
+               'Mexican Restaurant': 'Mexican Restaurant',
+               'Italian Restaurant': 'Italian Restaurant',
+               'French Restaurant': 'French Restaurant',
+               'Greek Restaurant': 'Greek Restaurant',
+               'Turkish Restaurant': 'Turkish Restaurant',
+               'Lebanese Restaurant': 'Lebanese Restaurant',
+               'Moroccan Restaurant': 'Moroccan Restaurant',
+               'Spanish Restaurant': 'Spanish Restaurant',
+               'Portuguese Restaurant': 'Portuguese Restaurant',
+               'German Restaurant': 'German Restaurant',
+               'Austrian Restaurant': 'Austrian Restaurant',
+               'Swiss Restaurant': 'Swiss Restaurant',
+               'Dutch Restaurant': 'Dutch Restaurant',
+               'Belgian Restaurant': 'Belgian Restaurant',
+               'Polish Restaurant': 'Polish Restaurant',
+               'Czech Restaurant': 'Czech Restaurant',
+               'Hungarian Restaurant': 'Hungarian Restaurant',
+               'Romanian Restaurant': 'Romanian Restaurant',
+               'Bulgarian Restaurant': 'Bulgarian Restaurant',
+               'Serbian Restaurant': 'Serbian Restaurant',
+               'Croatian Restaurant': 'Croatian Restaurant',
+               'Slovenian Restaurant': 'Slovenian Restaurant',
+               'Slovak Restaurant': 'Slovak Restaurant',
+               'Ukrainian Restaurant': 'Ukrainian Restaurant',
+               'Russian Restaurant': 'Russian Restaurant',
+               'Georgian Restaurant': 'Georgian Restaurant',
+               'Armenian Restaurant': 'Armenian Restaurant',
+               'Azerbaijani Restaurant': 'Azerbaijani Restaurant',
+               'Iranian Restaurant': 'Iranian Restaurant',
+               'Iraqi Restaurant': 'Iraqi Restaurant',
+               'Syrian Restaurant': 'Syrian Restaurant',
+               'Jordanian Restaurant': 'Jordanian Restaurant',
+               'Israeli Restaurant': 'Israeli Restaurant',
+               'Palestinian Restaurant': 'Palestinian Restaurant',
+               'Egyptian Restaurant': 'Egyptian Restaurant',
+               'Libyan Restaurant': 'Libyan Restaurant',
+               'Tunisian Restaurant': 'Tunisian Restaurant',
+               'Algerian Restaurant': 'Algerian Restaurant',
+               'Mauritanian Restaurant': 'Mauritanian Restaurant',
+               'Senegalese Restaurant': 'Senegalese Restaurant',
+               'Gambian Restaurant': 'Gambian Restaurant',
+               'Guinea-Bissau Restaurant': 'Guinea-Bissau Restaurant',
+               'Guinean Restaurant': 'Guinean Restaurant',
+               'Sierra Leonean Restaurant': 'Sierra Leonean Restaurant',
+               'Liberian Restaurant': 'Liberian Restaurant',
+               'Ivorian Restaurant': 'Ivorian Restaurant',
+               'Ghanaian Restaurant': 'Ghanaian Restaurant',
+               'Togolese Restaurant': 'Togolese Restaurant',
+               'Beninese Restaurant': 'Beninese Restaurant',
+               'Nigerian Restaurant': 'Nigerian Restaurant',
+               'Cameroonian Restaurant': 'Cameroonian Restaurant',
+               'Chadian Restaurant': 'Chadian Restaurant',
+               'Central African Restaurant': 'Central African Restaurant',
+               'Equatorial Guinean Restaurant': 'Equatorial Guinean Restaurant',
+               'Gabonese Restaurant': 'Gabonese Restaurant',
+               'Congolese Restaurant': 'Congolese Restaurant',
+               'Democratic Republic of the Congo Restaurant': 'Democratic Republic of the Congo Restaurant',
+               'Angolan Restaurant': 'Angolan Restaurant',
+               'Zambian Restaurant': 'Zambian Restaurant',
+               'Malawian Restaurant': 'Malawian Restaurant',
+               'Mozambican Restaurant': 'Mozambican Restaurant',
+               'Zimbabwean Restaurant': 'Zimbabwean Restaurant',
+               'Botswanan Restaurant': 'Botswanan Restaurant',
+               'Namibian Restaurant': 'Namibian Restaurant',
+               'South African Restaurant': 'South African Restaurant',
+               'Lesothoan Restaurant': 'Lesothoan Restaurant',
+               'Eswatini Restaurant': 'Eswatini Restaurant',
+               'Madagascan Restaurant': 'Madagascan Restaurant',
+               'Comorian Restaurant': 'Comorian Restaurant',
+               'Mauritian Restaurant': 'Mauritian Restaurant',
+               'Seychellois Restaurant': 'Seychellois Restaurant',
+               'Djiboutian Restaurant': 'Djiboutian Restaurant',
+               'Eritrean Restaurant': 'Eritrean Restaurant',
+               'Ethiopian Restaurant': 'Ethiopian Restaurant',
+               'Somali Restaurant': 'Somali Restaurant',
+               'Kenyan Restaurant': 'Kenyan Restaurant',
+               'Ugandan Restaurant': 'Ugandan Restaurant',
+               'Tanzanian Restaurant': 'Tanzanian Restaurant',
+               'Rwandan Restaurant': 'Rwandan Restaurant',
+               'Burundian Restaurant': 'Burundian Restaurant',
+               'South Sudanese Restaurant': 'South Sudanese Restaurant',
+               'Sudanese Restaurant': 'Sudanese Restaurant'
+             }
+           };
+           
+           const translations = categoryTranslations[currentLanguage] || categoryTranslations['tr'];
+           return translations[englishCategory] || englishCategory;
+         }
+         
+         // Detaylı açıklama oluşturma fonksiyonu
+         function generateDetailedDescription(place, cityName) {
+           let description = '';
+           
+           const descriptions = {
+             tr: {
+               defaultStart: `${place.name}, ${cityName} şehrinin önemli turistik yerlerinden biridir. `,
+               categoryInfo: `Bu yer ${translateCategory(place.categories?.[0]?.name)} kategorisinde yer almaktadır. `,
+               ratingInfo: `Foursquare kullanıcıları tarafından ${place.rating}/10 puan almıştır. `,
+               addressInfo: `Adres: ${place.location?.formatted_address}. `,
+               defaultEnd: `Bu yer Foursquare API'den alınan güncel bilgilerle eklenmiştir ve ${cityName} şehrini ziyaret eden turistlerin mutlaka görmesi gereken yerlerden biridir.`
+             },
+             en: {
+               defaultStart: `${place.name} is one of the important tourist attractions in ${cityName}. `,
+               categoryInfo: `This place is in the ${translateCategory(place.categories?.[0]?.name)} category. `,
+               ratingInfo: `It has received ${place.rating}/10 points from Foursquare users. `,
+               addressInfo: `Address: ${place.location?.formatted_address}. `,
+               defaultEnd: `This place has been added with current information from Foursquare API and is one of the must-see places for tourists visiting ${cityName}.`
+             }
+           };
+           
+           const currentDescriptions = descriptions[currentLanguage] || descriptions['tr'];
+           
+           if (place.description) {
+             description += place.description;
+           } else {
+             description += currentDescriptions.defaultStart;
+           }
+           
+           if (place.categories && place.categories.length > 0) {
+             description += currentDescriptions.categoryInfo;
+           }
+           
+           if (place.rating) {
+             description += currentDescriptions.ratingInfo;
+           }
+           
+           if (place.location && place.location.formatted_address) {
+             description += currentDescriptions.addressInfo;
+           }
+           
+           description += currentDescriptions.defaultEnd;
+           
+           return description;
          }
          
          // Şehirden ülke tespiti - Dünya çapında şehirler
@@ -2484,6 +2994,106 @@
               if (user) loadPlacesTable(user);
             });
           }
+          
+                  // Dil değişikliği event listener
+        if (languageFilter) {
+          languageFilter.addEventListener('change', () => {
+            currentLanguage = languageFilter.value;
+            const user = auth.currentUser;
+            if (user) {
+              loadPlacesTable(user);
+              updateUIText();
+            }
+          });
+        }
+        
+        // UI metinlerini güncelle
+        function updateUIText() {
+          const texts = {
+            tr: {
+              addPlaceBtn: 'Ekle',
+              addLocationBtn: 'Turistik Yerleri Ekle',
+              searchBox: 'Yeni yer adı...',
+              locationSuggestionBox: 'Şehir veya ülke adı...',
+              createRouteBtn: '🗺️ Seçili Yerler İçin Rota Oluştur',
+              visitedFilter: {
+                all: 'Tümü',
+                visited: 'Gezildi',
+                notvisited: 'Gezilmedi'
+              },
+              tableHeaders: {
+                name: 'Yer Adı',
+                city: 'Şehir',
+                category: 'Kategori',
+                description: 'Açıklama',
+                visited: 'Ziyaret Edildi mi?',
+                select: 'Rota İçin Seç',
+                maps: 'Google Maps',
+                delete: 'Sil'
+              }
+            },
+            en: {
+              addPlaceBtn: 'Add',
+              addLocationBtn: 'Add Tourist Places',
+              searchBox: 'New place name...',
+              locationSuggestionBox: 'City or country name...',
+              createRouteBtn: '🗺️ Create Route for Selected Places',
+              visitedFilter: {
+                all: 'All',
+                visited: 'Visited',
+                notvisited: 'Not Visited'
+              },
+              tableHeaders: {
+                name: 'Place Name',
+                city: 'City',
+                category: 'Category',
+                description: 'Description',
+                visited: 'Visited?',
+                select: 'Select for Route',
+                maps: 'Google Maps',
+                delete: 'Delete'
+              }
+            }
+          };
+          
+          const currentTexts = texts[currentLanguage];
+          
+          // Buton metinlerini güncelle
+          if (addPlaceBtn) addPlaceBtn.textContent = currentTexts.addPlaceBtn;
+          if (document.getElementById('addLocationBtn')) {
+            document.getElementById('addLocationBtn').textContent = currentTexts.addLocationBtn;
+          }
+          if (document.getElementById('createRouteBtn')) {
+            document.getElementById('createRouteBtn').textContent = currentTexts.createRouteBtn;
+          }
+          
+          // Placeholder metinlerini güncelle
+          if (searchBox) searchBox.placeholder = currentTexts.searchBox;
+          if (document.getElementById('locationSuggestionBox')) {
+            document.getElementById('locationSuggestionBox').placeholder = currentTexts.locationSuggestionBox;
+          }
+          
+          // Filtre metinlerini güncelle
+          const visitedFilter = document.getElementById('visitedFilter');
+          if (visitedFilter) {
+            visitedFilter.options[0].text = currentTexts.visitedFilter.all;
+            visitedFilter.options[1].text = currentTexts.visitedFilter.visited;
+            visitedFilter.options[2].text = currentTexts.visitedFilter.notvisited;
+          }
+          
+          // Tablo başlıklarını güncelle
+          const tableHeaders = document.querySelectorAll('#placesTable th');
+          if (tableHeaders.length >= 8) {
+            tableHeaders[0].textContent = currentTexts.tableHeaders.name;
+            tableHeaders[1].textContent = currentTexts.tableHeaders.city;
+            tableHeaders[2].textContent = currentTexts.tableHeaders.category;
+            tableHeaders[3].textContent = currentTexts.tableHeaders.description;
+            tableHeaders[4].textContent = currentTexts.tableHeaders.visited;
+            tableHeaders[5].textContent = currentTexts.tableHeaders.select;
+            tableHeaders[6].textContent = currentTexts.tableHeaders.maps;
+            tableHeaders[7].textContent = currentTexts.tableHeaders.delete;
+          }
+        }
         });
         
         // Sayfa tamamen yüklendikten sonra arka planı güncelle
@@ -2493,6 +3103,9 @@
             console.log('Sayfa yüklendi, arka plan güncelleniyor:', countryFilter.value);
             window.enhancedBackgroundManager.updateBackgroundForCountry(countryFilter.value);
           }
+          
+          // UI metinlerini güncelle
+          updateUIText();
         });
 
         // Tüm popüler ülke JSON dosyalarını otomatik bul ve oku
