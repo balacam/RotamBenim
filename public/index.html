@@ -283,7 +283,8 @@
             
             <!-- Filtreler -->
             <div id="filters" style="display: flex; gap: 16px; justify-content: flex-start; align-items: center; margin-bottom: 18px; margin-top: 18px; position: relative;">
-              <select id="languageFilter" style="min-width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
+              <!-- Dil seçimi giriş ekranına taşındı; giriş sonrası bu dropdown gizlendi -->
+              <select id="languageFilter" style="display:none; min-width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
                 <option value="tr">Türkçe</option>
                 <option value="en">English</option>
               </select>
@@ -508,6 +509,18 @@
                 // User is signed in
                 googleSignInBtn.style.display = 'none';
                 userInfo.style.display = 'block';
+
+                // Giriş sonrası filtrelerdeki dil seçiciyi gizli tut
+                const langFilterEl = document.getElementById('languageFilter');
+                if (langFilterEl) langFilterEl.style.display = 'none';
+
+                // Giriş ekranındaki dil seçimini uygula ve sonra gizle
+                if (preLoginLanguage && preLoginLanguage.value) {
+                    currentLanguage = preLoginLanguage.value;
+                    try { updateUIText(); } catch (e) {}
+                    const preLoginWrapper = preLoginLanguage.closest('div');
+                    if (preLoginWrapper) preLoginWrapper.style.display = 'none';
+                }
                 
                 userName.textContent = user.displayName || 'Kullanıcı';
                 userEmail.textContent = user.email || '';
@@ -523,6 +536,14 @@
                 googleSignInBtn.style.display = 'flex';
                 userInfo.style.display = 'none';
                 googleSignInBtn.disabled = false;
+                
+                // Giriş öncesi dil seçiciyi göster, filtre dilini sakla
+                if (preLoginLanguage) {
+                    const preLoginWrapper = preLoginLanguage.closest('div');
+                    if (preLoginWrapper) preLoginWrapper.style.display = '';
+                }
+                const langFilterEl = document.getElementById('languageFilter');
+                if (langFilterEl) langFilterEl.style.display = 'none';
             }
         }
 
@@ -3212,6 +3233,17 @@
             console.log('Sayfa yüklendi, arka plan güncelleniyor:', countryFilter.value);
             window.enhancedBackgroundManager.updateBackgroundForCountry(countryFilter.value);
           }
+
+          // İstenmeyen base64 görsel bağlantısını temizle (varsa)
+          const BLOCKED_URL = 'https://page.gensparksite.com/v1/base64_upload/91a25373704bbb893e4e2afb61da082f';
+          document.querySelectorAll(`img[src="${BLOCKED_URL}"]`).forEach(el => el.remove());
+          document.querySelectorAll('[style*="91a25373704bbb893e4e2afb61da082f"]').forEach(el => {
+            el.style.backgroundImage = '';
+          });
+
+          // Filtrelerdeki dil seçiciyi gizle (giriş sonrası görünmesin)
+          const langFilter = document.getElementById('languageFilter');
+          if (langFilter) langFilter.style.display = 'none';
           
           // UI metinlerini güncelle
           updatePreLoginText();
