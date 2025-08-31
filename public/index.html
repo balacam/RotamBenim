@@ -283,10 +283,6 @@
             
             <!-- Filtreler -->
             <div id="filters" style="display: flex; gap: 16px; justify-content: flex-start; align-items: center; margin-bottom: 18px; margin-top: 18px; position: relative;">
-              <select id="languageFilter" style="min-width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
-                <option value="tr">Türkçe</option>
-                <option value="en">English</option>
-              </select>
               <select id="countryFilter" style="min-width: 140px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
               <label for="visitedFilter">Ziyaret:</label>
               <select id="visitedFilter" style="min-width: 120px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
@@ -294,33 +290,33 @@
                 <option value="visited">Gezildi</option>
                 <option value="notvisited" selected>Gezilmedi</option>
               </select>
-              <input id="searchBox" class="form-control awesomplete" type="text" placeholder="Yeni yer adı..." style="min-width: 180px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;" autocomplete="off" />
-              <button id="addPlaceBtn" style="padding: 6px 18px; border-radius: 6px; border: none; background: #206bc4; color: white; font-weight: 500; cursor: pointer;">Ekle</button>
+              <input id="searchBox" class="form-control awesomplete" type="text" placeholder="Yeni yer adı..." style="min-width: 180px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;" autocomplete="off" data-tr="Yeni yer adı..." data-en="New place name..." />
+              <button id="addPlaceBtn" style="padding: 6px 18px; border-radius: 6px; border: none; background: #206bc4; color: white; font-weight: 500; cursor: pointer;" data-tr="Ekle" data-en="Add">Ekle</button>
               
-              <input id="locationSuggestionBox" type="text" placeholder="Şehir veya ülke adı..." style="min-width: 180px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; margin-left: 15px;" autocomplete="off" list="locationSuggestions" />
+              <input id="locationSuggestionBox" type="text" placeholder="Şehir veya ülke adı..." style="min-width: 180px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; margin-left: 15px;" autocomplete="off" list="locationSuggestions" data-tr="Şehir veya ülke adı..." data-en="City or country name..." />
               <datalist id="locationSuggestions">
                 <!-- Dinamik öneriler buraya eklenecek -->
               </datalist>
-              <button id="addLocationBtn" style="padding: 6px 18px; border-radius: 6px; border: none; background: #28a745; color: white; font-weight: 500; cursor: pointer;">Turistik Yerleri Ekle</button>
+              <button id="addLocationBtn" style="padding: 6px 18px; border-radius: 6px; border: none; background: #28a745; color: white; font-weight: 500; cursor: pointer;" data-tr="Turistik Yerleri Ekle" data-en="Add Tourist Places">Turistik Yerleri Ekle</button>
             </div>
             
             <!-- Gezilecek Yerler Tablosu -->
             <div id="placesTableWrapper" class="table-responsive">
               <div id="placesTableContainer" style="margin-top: 0; display: none;">
                 <div style="margin-bottom: 15px; text-align: center;">
-                  <button id="createRouteBtn" style="padding: 8px 20px; border-radius: 6px; border: none; background: #28a745; color: white; font-weight: 500; cursor: pointer; font-size: 14px;">🗺️ Seçili Yerler İçin Rota Oluştur</button>
+                  <button id="createRouteBtn" style="padding: 8px 20px; border-radius: 6px; border: none; background: #28a745; color: white; font-weight: 500; cursor: pointer; font-size: 14px;" data-tr="🗺️ Seçili Yerler İçin Rota Oluştur" data-en="🗺️ Create Route for Selected Places">🗺️ Seçili Yerler İçin Rota Oluştur</button>
                 </div>
                 <table id="placesTable" class="table table-sm">
                   <thead>
                     <tr>
-                      <th>Yer Adı</th>
-                      <th>Şehir</th>
-                      <th>Kategori</th>
-                      <th>Açıklama</th>
-                      <th>Ziyaret Edildi mi?</th>
-                      <th>Rota İçin Seç</th>
-                      <th>Google Maps</th>
-                      <th>Sil</th>
+                      <th id="headerName">Yer Adı</th>
+                      <th id="headerCity">Şehir</th>
+                      <th id="headerCategory">Kategori</th>
+                      <th id="headerDescription">Açıklama</th>
+                      <th id="headerVisited">Ziyaret Edildi mi?</th>
+                      <th id="headerSelect">Rota İçin Seç</th>
+                      <th id="headerMaps">Google Maps</th>
+                      <th id="headerDelete">Sil</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -369,7 +365,6 @@
         const placesTableBody = document.querySelector('#placesTable tbody');
         const addPlaceBtn = document.getElementById('addPlaceBtn');
         const searchBox = document.getElementById('searchBox');
-        const languageFilter = document.getElementById('languageFilter');
         const preLoginLanguage = document.getElementById('preLoginLanguage');
         const loginButtonText = document.getElementById('loginButtonText');
         let suggestionResults = [];
@@ -529,6 +524,14 @@
         // Auth state listener
         onAuthStateChanged(auth, async (user) => {
             console.log('Auth state changed:', user ? 'User signed in' : 'User signed out');
+            
+            if (user) {
+                // Login sonrası dil ayarını login öncesi seçilen dile göre ayarla
+                if (preLoginLanguage) {
+                    currentLanguage = preLoginLanguage.value;
+                }
+            }
+            
             updateUI(user);
             
             if (user) {
@@ -1075,6 +1078,68 @@
           if (!countryFilter.value) countryFilter.value = 'ALMANYA';
           // Varsayılan ziyaret filtresi: Gezilmedi
           if (!visitedFilter.value) visitedFilter.value = 'notvisited';
+          
+          // Tablo başlıklarını dil desteği ile güncelle
+          const tableHeaders = {
+            tr: {
+              name: 'Yer Adı',
+              city: 'Şehir',
+              category: 'Kategori',
+              description: 'Açıklama',
+              visited: 'Ziyaret Edildi mi?',
+              select: 'Rota İçin Seç',
+              maps: 'Google Maps',
+              delete: 'Sil'
+            },
+            en: {
+              name: 'Place Name',
+              city: 'City',
+              category: 'Category',
+              description: 'Description',
+              visited: 'Visited?',
+              select: 'Select for Route',
+              maps: 'Google Maps',
+              delete: 'Delete'
+            }
+          };
+          
+          const currentHeaders = tableHeaders[currentLanguage] || tableHeaders['tr'];
+          
+          // Tablo başlıklarını güncelle
+          if (document.getElementById('headerName')) document.getElementById('headerName').textContent = currentHeaders.name;
+          if (document.getElementById('headerCity')) document.getElementById('headerCity').textContent = currentHeaders.city;
+          if (document.getElementById('headerCategory')) document.getElementById('headerCategory').textContent = currentHeaders.category;
+          if (document.getElementById('headerDescription')) document.getElementById('headerDescription').textContent = currentHeaders.description;
+          if (document.getElementById('headerVisited')) document.getElementById('headerVisited').textContent = currentHeaders.visited;
+          if (document.getElementById('headerSelect')) document.getElementById('headerSelect').textContent = currentHeaders.select;
+          if (document.getElementById('headerMaps')) document.getElementById('headerMaps').textContent = currentHeaders.maps;
+          if (document.getElementById('headerDelete')) document.getElementById('headerDelete').textContent = currentHeaders.delete;
+          
+          // Buton metinlerini güncelle
+          const addPlaceBtn = document.getElementById('addPlaceBtn');
+          const addLocationBtn = document.getElementById('addLocationBtn');
+          const createRouteBtn = document.getElementById('createRouteBtn');
+          
+          if (addPlaceBtn) {
+            addPlaceBtn.textContent = addPlaceBtn.getAttribute(`data-${currentLanguage}`) || addPlaceBtn.getAttribute('data-tr');
+          }
+          if (addLocationBtn) {
+            addLocationBtn.textContent = addLocationBtn.getAttribute(`data-${currentLanguage}`) || addLocationBtn.getAttribute('data-tr');
+          }
+          if (createRouteBtn) {
+            createRouteBtn.textContent = createRouteBtn.getAttribute(`data-${currentLanguage}`) || createRouteBtn.getAttribute('data-tr');
+          }
+          
+          // Placeholder metinlerini güncelle
+          const searchBox = document.getElementById('searchBox');
+          const locationSuggestionBox = document.getElementById('locationSuggestionBox');
+          
+          if (searchBox) {
+            searchBox.placeholder = searchBox.getAttribute(`data-${currentLanguage}`) || searchBox.getAttribute('data-tr');
+          }
+          if (locationSuggestionBox) {
+            locationSuggestionBox.placeholder = locationSuggestionBox.getAttribute(`data-${currentLanguage}`) || locationSuggestionBox.getAttribute('data-tr');
+          }
 
           // Filtreye göre verileri süz
           let filtered = [];
@@ -1087,17 +1152,25 @@
           filtered.sort((a, b) => (a.city || '').localeCompare(b.city || ''));
           filtered.forEach(data => {
             const row = document.createElement('tr');
-            const categoryHtml = (data.category || '').replace(/\s*\/\s*/g, '<br>');
-            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((data.name || '') + ' ' + (data.city || '') + ' ' + (data.country || ''))}`;
+            
+            // Dil desteği için veri seçimi
+            const displayName = currentLanguage === 'en' && data.name_en ? data.name_en : (data.name || '');
+            const displayCity = currentLanguage === 'en' && data.city_en ? data.city_en : (data.city || '');
+            const displayCategory = currentLanguage === 'en' && data.category_en ? data.category_en : (data.category || '');
+            const displayDescription = currentLanguage === 'en' && data.description_en ? data.description_en : (data.description || '');
+            
+            const categoryHtml = (displayCategory || '').replace(/\s*\/\s*/g, '<br>');
+            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((displayName || '') + ' ' + (displayCity || '') + ' ' + (data.country || ''))}`;
+            
             row.innerHTML = `
-              <td class="name">${data.name || ''}</td>
-              <td>${data.city || ''}</td>
+              <td class="name">${displayName || ''}</td>
+              <td>${displayCity || ''}</td>
               <td>${categoryHtml}</td>
-              <td class="description">${data.description || ''}</td>
+              <td class="description">${displayDescription || ''}</td>
               <td style="text-align:center;"><input type="checkbox" class="visited-checkbox" data-docid="${data._docId}" ${data.visited ? 'checked' : ''}></td>
-              <td style="text-align:center;"><input type="checkbox" class="route-checkbox" data-name="${data.name || ''}" data-city="${data.city || ''}" data-country="${data.country || ''}"></td>
+              <td style="text-align:center;"><input type="checkbox" class="route-checkbox" data-name="${displayName || ''}" data-city="${displayCity || ''}" data-country="${data.country || ''}"></td>
               <td style="text-align:center;"><a href="${googleMapsUrl}" target="_blank" style="background:#4285f4;color:white;border:none;padding:4px 8px;border-radius:5px;text-decoration:none;font-size:12px;">🗺️ Maps</a></td>
-              <td style="text-align:center;"><button class="delete-place-btn" data-docid="${data._docId}" style="background:#dc3545;color:white;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;">Sil</button></td>
+              <td style="text-align:center;"><button class="delete-place-btn" data-docid="${data._docId}" style="background:#dc3545;color:white;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;">${currentLanguage === 'en' ? 'Delete' : 'Sil'}</button></td>
             `;
             placesTableBody.appendChild(row);
           });
@@ -1498,15 +1571,55 @@
          }
          
          // Belirli bir yerin daha önce eklenip eklenmediğini kontrol et
-         async function checkIfPlaceExists(user, placeName, cityName) {
+         async function checkIfPlaceExists(user, placeNameOrObj, cityName) {
            try {
              const placesRef = collection(db, 'users', user.uid, 'places');
-             const q = query(placesRef, where('name', '==', placeName), where('city', '==', cityName));
-             const querySnapshot = await getDocs(q);
              
-             console.log(`Kontrol ediliyor: ${placeName} - ${cityName}, Sonuç: ${querySnapshot.size} adet`);
-             
-             return querySnapshot.size > 0;
+             // Eğer place objesi verilmişse
+             if (typeof placeNameOrObj === 'object') {
+               const place = placeNameOrObj;
+               const placeName = place.name;
+               
+               // Foursquare ID ile kontrol (en güvenilir)
+               if (place.fsq_id) {
+                 const fsqQuery = query(placesRef, where('fsq_id', '==', place.fsq_id));
+                 const fsqSnapshot = await getDocs(fsqQuery);
+                 
+                 if (fsqSnapshot.size > 0) {
+                   console.log(`✅ Foursquare ID ile zaten mevcut: ${placeName} (ID: ${place.fsq_id})`);
+                   return true;
+                 }
+               }
+               
+               // İsim ve şehir eşleşmesi ile kontrol
+               const q = query(placesRef, where('name', '==', placeName), where('city', '==', cityName));
+               const querySnapshot = await getDocs(q);
+               
+               console.log(`Kontrol ediliyor: "${placeName}" - "${cityName}", Sonuç: ${querySnapshot.size} adet`);
+               
+               if (querySnapshot.size > 0) {
+                 console.log(`✅ Zaten mevcut: ${placeName} - ${cityName}`);
+                 return true;
+               }
+               
+               console.log(`❌ Yeni yer: ${placeName} - ${cityName}`);
+               return false;
+             } else {
+               // String olarak verilmişse (eski sistem)
+               const placeName = placeNameOrObj;
+               const q = query(placesRef, where('name', '==', placeName), where('city', '==', cityName));
+               const querySnapshot = await getDocs(q);
+               
+               console.log(`Kontrol ediliyor: "${placeName}" - "${cityName}", Sonuç: ${querySnapshot.size} adet`);
+               
+               if (querySnapshot.size > 0) {
+                 console.log(`✅ Zaten mevcut: ${placeName} - ${cityName}`);
+                 return true;
+               }
+               
+               console.log(`❌ Yeni yer: ${placeName} - ${cityName}`);
+               return false;
+             }
            } catch (error) {
              console.error('Yer kontrolü hatası:', error);
              return false;
@@ -1541,7 +1654,7 @@
                let skippedCount = 0;
                for (const place of foursquarePlaces) {
                  console.log(`İşleniyor: ${place.name} - ${place.city}`);
-                 const placeExists = await checkIfPlaceExists(user, place.name, place.city);
+                 const placeExists = await checkIfPlaceExists(user, place, place.city);
                  if (!placeExists) {
                    console.log(`Ekleniyor: ${place.name}`);
                    await addDoc(collection(db, 'users', user.uid, 'places'), place);
@@ -1598,7 +1711,7 @@
              for (const place of selectedPlaces) {
                console.log(`İşleniyor: ${place.name} - ${place.city}`);
                // Her bir yerin daha önce eklenip eklenmediğini kontrol et
-               const placeExists = await checkIfPlaceExists(user, place.name, place.city);
+               const placeExists = await checkIfPlaceExists(user, place, place.city);
                if (!placeExists) {
                  console.log(`Ekleniyor: ${place.name}`);
                  await addDoc(collection(db, 'users', user.uid, 'places'), place);
@@ -1702,19 +1815,26 @@
                
                console.log(`Filtrelenmiş turistik yerler: ${touristPlaces.length}`);
                
-               return touristPlaces.map(place => ({
-                 name: place.name || 'Bilinmeyen Yer',
-                 city: cityName,
-                 country: place.location?.country || 'Bilinmeyen Ülke',
-                 category: translateCategory(place.categories?.[0]?.name) || 'Turistik Yer',
-                 description: generateDetailedDescription(place, cityName),
-                 visited: false,
-                 createdAt: new Date(),
-                 source: 'foursquare',
-                 fsq_id: place.fsq_id,
-                 address: place.location?.formatted_address || '',
-                 rating: place.rating || null
-               }));
+               // Async olarak açıklamaları oluştur
+               const placesWithDescriptions = [];
+               for (const place of touristPlaces) {
+                 const description = await generateDetailedDescription(place, cityName);
+                 placesWithDescriptions.push({
+                   name: place.name || 'Bilinmeyen Yer',
+                   city: cityName,
+                   country: place.location?.country || 'Bilinmeyen Ülke',
+                   category: translateCategory(place.categories?.[0]?.name) || 'Turistik Yer',
+                   description: description,
+                   visited: false,
+                   createdAt: new Date(),
+                   source: 'foursquare',
+                   fsq_id: place.fsq_id,
+                   address: place.location?.formatted_address || '',
+                   rating: place.rating || null
+                 });
+               }
+               
+               return placesWithDescriptions;
              } else {
                console.log('Foursquare API\'den sonuç döndürülmedi veya boş');
              }
@@ -2189,48 +2309,96 @@
            return translations[englishCategory] || englishCategory;
          }
          
+         // Wikipedia'dan bilgi çekme fonksiyonu
+         async function getWikipediaInfo(placeName, cityName) {
+           try {
+             const searchQuery = `${placeName} ${cityName}`;
+             const searchUrl = `https://tr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(searchQuery)}`;
+             
+             const response = await fetch(searchUrl);
+             if (!response.ok) return null;
+             
+             const data = await response.json();
+             return data.extract || null;
+           } catch (error) {
+             console.log('Wikipedia API hatası:', error);
+             return null;
+           }
+         }
+         
          // Detaylı açıklama oluşturma fonksiyonu
-         function generateDetailedDescription(place, cityName) {
+         async function generateDetailedDescription(place, cityName) {
            let description = '';
            
-           const descriptions = {
-             tr: {
-               defaultStart: `${place.name}, ${cityName} şehrinin önemli turistik yerlerinden biridir. `,
-               categoryInfo: `Bu yer ${translateCategory(place.categories?.[0]?.name)} kategorisinde yer almaktadır. `,
-               ratingInfo: `Foursquare kullanıcıları tarafından ${place.rating}/10 puan almıştır. `,
-               addressInfo: `Adres: ${place.location?.formatted_address}. `,
-               defaultEnd: `Bu yer Foursquare API'den alınan güncel bilgilerle eklenmiştir ve ${cityName} şehrini ziyaret eden turistlerin mutlaka görmesi gereken yerlerden biridir.`
-             },
-             en: {
-               defaultStart: `${place.name} is one of the important tourist attractions in ${cityName}. `,
-               categoryInfo: `This place is in the ${translateCategory(place.categories?.[0]?.name)} category. `,
-               ratingInfo: `It has received ${place.rating}/10 points from Foursquare users. `,
-               addressInfo: `Address: ${place.location?.formatted_address}. `,
-               defaultEnd: `This place has been added with current information from Foursquare API and is one of the must-see places for tourists visiting ${cityName}.`
+           // Önce Wikipedia'dan bilgi almaya çalış
+           const wikiInfo = await getWikipediaInfo(place.name, cityName);
+           
+           if (wikiInfo) {
+             // Wikipedia'dan gelen bilgiyi kullan
+             description = wikiInfo;
+             
+             // Eğer çok uzunsa kısalt
+             if (description.length > 500) {
+               description = description.substring(0, 500) + '...';
              }
-           };
-           
-           const currentDescriptions = descriptions[currentLanguage] || descriptions['tr'];
-           
-           if (place.description) {
-             description += place.description;
            } else {
-             description += currentDescriptions.defaultStart;
+             // Wikipedia'dan bilgi yoksa, daha anlamlı bir açıklama oluştur
+             const descriptions = {
+               tr: {
+                 landmark: `${place.name}, ${cityName} şehrinin en önemli tarihi ve turistik simgelerinden biridir. `,
+                 museum: `${place.name}, ${cityName} şehrinin en değerli müzelerinden biridir. `,
+                 park: `${place.name}, ${cityName} şehrinin en güzel parklarından biridir. `,
+                 church: `${place.name}, ${cityName} şehrinin en önemli dini yapılarından biridir. `,
+                 mosque: `${place.name}, ${cityName} şehrinin en önemli camilerinden biridir. `,
+                 palace: `${place.name}, ${cityName} şehrinin en görkemli saraylarından biridir. `,
+                 castle: `${place.name}, ${cityName} şehrinin en etkileyici kalelerinden biridir. `,
+                 bridge: `${place.name}, ${cityName} şehrinin en önemli köprülerinden biridir. `,
+                 default: `${place.name}, ${cityName} şehrinin önemli turistik yerlerinden biridir. `
+               },
+               en: {
+                 landmark: `${place.name} is one of the most important historical and tourist symbols of ${cityName}. `,
+                 museum: `${place.name} is one of the most valuable museums in ${cityName}. `,
+                 park: `${place.name} is one of the most beautiful parks in ${cityName}. `,
+                 church: `${place.name} is one of the most important religious buildings in ${cityName}. `,
+                 mosque: `${place.name} is one of the most important mosques in ${cityName}. `,
+                 palace: `${place.name} is one of the most magnificent palaces in ${cityName}. `,
+                 castle: `${place.name} is one of the most impressive castles in ${cityName}. `,
+                 bridge: `${place.name} is one of the most important bridges in ${cityName}. `,
+                 default: `${place.name} is one of the important tourist attractions in ${cityName}. `
+               }
+             };
+             
+             const currentDescriptions = descriptions[currentLanguage] || descriptions['tr'];
+             const category = place.categories?.[0]?.name?.toLowerCase() || '';
+             
+             // Kategoriye göre açıklama seç
+             if (category.includes('landmark') || category.includes('historic')) {
+               description = currentDescriptions.landmark;
+             } else if (category.includes('museum')) {
+               description = currentDescriptions.museum;
+             } else if (category.includes('park')) {
+               description = currentDescriptions.park;
+             } else if (category.includes('church')) {
+               description = currentDescriptions.church;
+             } else if (category.includes('mosque')) {
+               description = currentDescriptions.mosque;
+             } else if (category.includes('palace')) {
+               description = currentDescriptions.palace;
+             } else if (category.includes('castle')) {
+               description = currentDescriptions.castle;
+             } else if (category.includes('bridge')) {
+               description = currentDescriptions.bridge;
+             } else {
+               description = currentDescriptions.default;
+             }
+             
+             // Rating bilgisi ekle
+             if (place.rating && place.rating >= 8.0) {
+               description += currentLanguage === 'tr' ? 
+                 `Foursquare kullanıcıları tarafından ${place.rating}/10 puan almış, yüksek değerlendirmeye sahiptir. ` :
+                 `It has received ${place.rating}/10 points from Foursquare users and has a high rating. `;
+             }
            }
-           
-           if (place.categories && place.categories.length > 0) {
-             description += currentDescriptions.categoryInfo;
-           }
-           
-           if (place.rating) {
-             description += currentDescriptions.ratingInfo;
-           }
-           
-           if (place.location && place.location.formatted_address) {
-             description += currentDescriptions.addressInfo;
-           }
-           
-           description += currentDescriptions.defaultEnd;
            
            return description;
          }
@@ -3078,17 +3246,7 @@
           });
         }
         
-        // Login sonrası dil değişikliği event listener
-        if (languageFilter) {
-          languageFilter.addEventListener('change', () => {
-            currentLanguage = languageFilter.value;
-            const user = auth.currentUser;
-            if (user) {
-              loadPlacesTable(user);
-              updateUIText();
-            }
-          });
-        }
+
         
         // Login öncesi metinleri güncelle
         function updatePreLoginText() {
@@ -3116,93 +3274,7 @@
           }
         }
         
-        // UI metinlerini güncelle
-        function updateUIText() {
-          const texts = {
-            tr: {
-              addPlaceBtn: 'Ekle',
-              addLocationBtn: 'Turistik Yerleri Ekle',
-              searchBox: 'Yeni yer adı...',
-              locationSuggestionBox: 'Şehir veya ülke adı...',
-              createRouteBtn: '🗺️ Seçili Yerler İçin Rota Oluştur',
-              visitedFilter: {
-                all: 'Tümü',
-                visited: 'Gezildi',
-                notvisited: 'Gezilmedi'
-              },
-              tableHeaders: {
-                name: 'Yer Adı',
-                city: 'Şehir',
-                category: 'Kategori',
-                description: 'Açıklama',
-                visited: 'Ziyaret Edildi mi?',
-                select: 'Rota İçin Seç',
-                maps: 'Google Maps',
-                delete: 'Sil'
-              }
-            },
-            en: {
-              addPlaceBtn: 'Add',
-              addLocationBtn: 'Add Tourist Places',
-              searchBox: 'New place name...',
-              locationSuggestionBox: 'City or country name...',
-              createRouteBtn: '🗺️ Create Route for Selected Places',
-              visitedFilter: {
-                all: 'All',
-                visited: 'Visited',
-                notvisited: 'Not Visited'
-              },
-              tableHeaders: {
-                name: 'Place Name',
-                city: 'City',
-                category: 'Category',
-                description: 'Description',
-                visited: 'Visited?',
-                select: 'Select for Route',
-                maps: 'Google Maps',
-                delete: 'Delete'
-              }
-            }
-          };
-          
-          const currentTexts = texts[currentLanguage];
-          
-          // Buton metinlerini güncelle
-          if (addPlaceBtn) addPlaceBtn.textContent = currentTexts.addPlaceBtn;
-          if (document.getElementById('addLocationBtn')) {
-            document.getElementById('addLocationBtn').textContent = currentTexts.addLocationBtn;
-          }
-          if (document.getElementById('createRouteBtn')) {
-            document.getElementById('createRouteBtn').textContent = currentTexts.createRouteBtn;
-          }
-          
-          // Placeholder metinlerini güncelle
-          if (searchBox) searchBox.placeholder = currentTexts.searchBox;
-          if (document.getElementById('locationSuggestionBox')) {
-            document.getElementById('locationSuggestionBox').placeholder = currentTexts.locationSuggestionBox;
-          }
-          
-          // Filtre metinlerini güncelle
-          const visitedFilter = document.getElementById('visitedFilter');
-          if (visitedFilter) {
-            visitedFilter.options[0].text = currentTexts.visitedFilter.all;
-            visitedFilter.options[1].text = currentTexts.visitedFilter.visited;
-            visitedFilter.options[2].text = currentTexts.visitedFilter.notvisited;
-          }
-          
-          // Tablo başlıklarını güncelle
-          const tableHeaders = document.querySelectorAll('#placesTable th');
-          if (tableHeaders.length >= 8) {
-            tableHeaders[0].textContent = currentTexts.tableHeaders.name;
-            tableHeaders[1].textContent = currentTexts.tableHeaders.city;
-            tableHeaders[2].textContent = currentTexts.tableHeaders.category;
-            tableHeaders[3].textContent = currentTexts.tableHeaders.description;
-            tableHeaders[4].textContent = currentTexts.tableHeaders.visited;
-            tableHeaders[5].textContent = currentTexts.tableHeaders.select;
-            tableHeaders[6].textContent = currentTexts.tableHeaders.maps;
-            tableHeaders[7].textContent = currentTexts.tableHeaders.delete;
-          }
-        }
+
         });
         
         // Sayfa tamamen yüklendikten sonra arka planı güncelle
@@ -3215,7 +3287,6 @@
           
           // UI metinlerini güncelle
           updatePreLoginText();
-          updateUIText();
         });
 
         // Tüm popüler ülke JSON dosyalarını otomatik bul ve oku
