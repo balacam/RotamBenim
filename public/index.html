@@ -246,6 +246,15 @@
         <div class="login-card">
             <div class="login-logo">🌍 Rotam Benim</div>
             
+            <!-- Language Selection (before login) -->
+            <div style="margin-bottom: 20px; text-align: center;">
+                <label for="preLoginLanguage" style="display: block; margin-bottom: 8px; color: #626976; font-size: 14px;">Dil / Language:</label>
+                <select id="preLoginLanguage" style="min-width: 120px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; background: white; font-size: 14px;">
+                    <option value="tr">🇹🇷 Türkçe</option>
+                    <option value="en">🇺🇸 English</option>
+                </select>
+            </div>
+            
             <!-- Login Button -->
             <button id="googleSignInBtn" class="google-btn">
                 <svg width="20" height="20" viewBox="0 0 24 24">
@@ -254,7 +263,7 @@
                     <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                Google ile Giriş Yap
+                <span id="loginButtonText">Google ile Giriş Yap</span>
             </button>
             
             <!-- User Info (hidden by default) -->
@@ -361,6 +370,8 @@
         const addPlaceBtn = document.getElementById('addPlaceBtn');
         const searchBox = document.getElementById('searchBox');
         const languageFilter = document.getElementById('languageFilter');
+        const preLoginLanguage = document.getElementById('preLoginLanguage');
+        const loginButtonText = document.getElementById('loginButtonText');
         let suggestionResults = [];
         const GEONAMES_USERNAME = "b.alacam";
         
@@ -1488,10 +1499,18 @@
          
          // Belirli bir yerin daha önce eklenip eklenmediğini kontrol et
          async function checkIfPlaceExists(user, placeName, cityName) {
-           const placesRef = collection(db, 'users', user.uid, 'places');
-           const q = query(placesRef, where('name', '==', placeName), where('city', '==', cityName));
-           const querySnapshot = await getDocs(q);
-           return querySnapshot.size > 0;
+           try {
+             const placesRef = collection(db, 'users', user.uid, 'places');
+             const q = query(placesRef, where('name', '==', placeName), where('city', '==', cityName));
+             const querySnapshot = await getDocs(q);
+             
+             console.log(`Kontrol ediliyor: ${placeName} - ${cityName}, Sonuç: ${querySnapshot.size} adet`);
+             
+             return querySnapshot.size > 0;
+           } catch (error) {
+             console.error('Yer kontrolü hatası:', error);
+             return false;
+           }
          }
          
          // Var olan ülke yerlerini kontrol et
@@ -1519,18 +1538,24 @@
                showStatus(`${cityName} için ${foursquarePlaces.length} turistik yer bulundu. Ekleniyor...`, 'info');
                
                let addedCount = 0;
+               let skippedCount = 0;
                for (const place of foursquarePlaces) {
+                 console.log(`İşleniyor: ${place.name} - ${place.city}`);
                  const placeExists = await checkIfPlaceExists(user, place.name, place.city);
                  if (!placeExists) {
+                   console.log(`Ekleniyor: ${place.name}`);
                    await addDoc(collection(db, 'users', user.uid, 'places'), place);
                    addedCount++;
+                 } else {
+                   console.log(`Zaten mevcut, atlanıyor: ${place.name}`);
+                   skippedCount++;
                  }
                }
                
                if (addedCount > 0) {
-                 showStatus(`${cityName} için ${addedCount} yeni turistik yer başarıyla eklendi!`, 'success');
+                 showStatus(`${cityName} için ${addedCount} yeni turistik yer başarıyla eklendi! ${skippedCount} yer zaten mevcut olduğu için atlandı.`, 'success');
                } else {
-                 showStatus(`${cityName} için tüm yerler zaten mevcut.`, 'info');
+                 showStatus(`${cityName} için tüm yerler zaten mevcut. ${skippedCount} yer kontrol edildi.`, 'info');
                }
                loadPlacesTable(user);
                return;
@@ -1569,19 +1594,25 @@
              showStatus(`${cityName} için ${selectedPlaces.length} turistik yer ekleniyor...`, 'info');
              
              let addedCount = 0;
+             let skippedCount = 0;
              for (const place of selectedPlaces) {
+               console.log(`İşleniyor: ${place.name} - ${place.city}`);
                // Her bir yerin daha önce eklenip eklenmediğini kontrol et
                const placeExists = await checkIfPlaceExists(user, place.name, place.city);
                if (!placeExists) {
+                 console.log(`Ekleniyor: ${place.name}`);
                  await addDoc(collection(db, 'users', user.uid, 'places'), place);
                  addedCount++;
+               } else {
+                 console.log(`Zaten mevcut, atlanıyor: ${place.name}`);
+                 skippedCount++;
                }
              }
              
              if (addedCount > 0) {
-               showStatus(`${cityName} için ${addedCount} yeni turistik yer başarıyla eklendi!`, 'success');
+               showStatus(`${cityName} için ${addedCount} yeni turistik yer başarıyla eklendi! ${skippedCount} yer zaten mevcut olduğu için atlandı.`, 'success');
              } else {
-               showStatus(`${cityName} için tüm yerler zaten mevcut.`, 'info');
+               showStatus(`${cityName} için tüm yerler zaten mevcut. ${skippedCount} yer kontrol edildi.`, 'info');
              }
              loadPlacesTable(user);
            } catch (error) {
@@ -1627,7 +1658,51 @@
              
              if (data.results && data.results.length > 0) {
                console.log(`Foursquare'den ${data.results.length} yer bulundu`);
-               return data.results.map(place => ({
+               
+               // Sadece gerçekten turistik yerleri filtrele
+               const touristPlaces = data.results.filter(place => {
+                 const category = place.categories?.[0]?.name?.toLowerCase() || '';
+                 const name = place.name?.toLowerCase() || '';
+                 
+                 // Turistik kategori listesi
+                 const touristCategories = [
+                   'landmark', 'historic site', 'museum', 'park', 'church', 'mosque', 'temple',
+                   'palace', 'castle', 'bridge', 'tower', 'monument', 'statue', 'fountain',
+                   'garden', 'beach', 'mountain', 'lake', 'river', 'cave', 'waterfall',
+                   'island', 'harbor', 'airport', 'university', 'library', 'theater',
+                   'cinema', 'concert hall', 'opera house', 'stadium', 'arena', 'marina',
+                   'amusement park', 'zoo', 'aquarium', 'planetarium', 'observatory',
+                   'botanical garden', 'arboretum', 'conservatory', 'art gallery',
+                   'tourist information', 'travel agency', 'resort', 'spa'
+                 ];
+                 
+                 // Turistik isim anahtar kelimeleri
+                 const touristKeywords = [
+                   'museum', 'palace', 'castle', 'tower', 'bridge', 'cathedral', 'mosque',
+                   'temple', 'park', 'garden', 'square', 'plaza', 'monument', 'statue',
+                   'fountain', 'beach', 'mountain', 'lake', 'river', 'cave', 'waterfall',
+                   'island', 'harbor', 'port', 'airport', 'university', 'library',
+                   'theater', 'cinema', 'concert', 'opera', 'stadium', 'arena',
+                   'amusement', 'zoo', 'aquarium', 'planetarium', 'observatory',
+                   'botanical', 'arboretum', 'conservatory', 'gallery', 'tourist',
+                   'travel', 'resort', 'spa', 'historic', 'ancient', 'old', 'traditional'
+                 ];
+                 
+                 // Kategori kontrolü
+                 const isTouristCategory = touristCategories.some(cat => category.includes(cat));
+                 
+                 // İsim kontrolü
+                 const isTouristName = touristKeywords.some(keyword => name.includes(keyword));
+                 
+                 // Rating kontrolü (eğer rating varsa ve düşükse filtrele)
+                 const hasGoodRating = !place.rating || place.rating >= 7.0;
+                 
+                 return isTouristCategory || isTouristName || hasGoodRating;
+               });
+               
+               console.log(`Filtrelenmiş turistik yerler: ${touristPlaces.length}`);
+               
+               return touristPlaces.map(place => ({
                  name: place.name || 'Bilinmeyen Yer',
                  city: cityName,
                  country: place.location?.country || 'Bilinmeyen Ülke',
@@ -2995,7 +3070,15 @@
             });
           }
           
-                  // Dil değişikliği event listener
+                  // Login öncesi dil değişikliği event listener
+        if (preLoginLanguage) {
+          preLoginLanguage.addEventListener('change', () => {
+            currentLanguage = preLoginLanguage.value;
+            updatePreLoginText();
+          });
+        }
+        
+        // Login sonrası dil değişikliği event listener
         if (languageFilter) {
           languageFilter.addEventListener('change', () => {
             currentLanguage = languageFilter.value;
@@ -3005,6 +3088,32 @@
               updateUIText();
             }
           });
+        }
+        
+        // Login öncesi metinleri güncelle
+        function updatePreLoginText() {
+          const texts = {
+            tr: {
+              loginButtonText: 'Google ile Giriş Yap',
+              languageLabel: 'Dil / Language:'
+            },
+            en: {
+              loginButtonText: 'Sign in with Google',
+              languageLabel: 'Language / Dil:'
+            }
+          };
+          
+          const currentTexts = texts[currentLanguage];
+          
+          if (loginButtonText) {
+            loginButtonText.textContent = currentTexts.loginButtonText;
+          }
+          
+          // Dil seçici label'ını güncelle
+          const languageLabel = document.querySelector('label[for="preLoginLanguage"]');
+          if (languageLabel) {
+            languageLabel.textContent = currentTexts.languageLabel;
+          }
         }
         
         // UI metinlerini güncelle
@@ -3105,6 +3214,7 @@
           }
           
           // UI metinlerini güncelle
+          updatePreLoginText();
           updateUIText();
         });
 
