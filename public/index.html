@@ -247,13 +247,7 @@
             <div class="login-logo">🌍 Rotam Benim</div>
             
             <!-- Language Selection (before login) -->
-            <div style="margin-bottom: 20px; text-align: center;">
-                <label for="preLoginLanguage" style="display: block; margin-bottom: 8px; color: #626976; font-size: 14px;">Dil / Language:</label>
-                <select id="preLoginLanguage" style="min-width: 120px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; background: white; font-size: 14px;">
-                    <option value="tr">🇹🇷 Türkçe</option>
-                    <option value="en">🇺🇸 English</option>
-                </select>
-            </div>
+
             
             <!-- Login Button -->
             <button id="googleSignInBtn" class="google-btn">
@@ -366,7 +360,6 @@
         const addPlaceBtn = document.getElementById('addPlaceBtn');
         const searchBox = document.getElementById('searchBox');
         const languageFilter = document.getElementById('languageFilter');
-        const preLoginLanguage = document.getElementById('preLoginLanguage');
         const loginButtonText = document.getElementById('loginButtonText');
         let suggestionResults = [];
         const GEONAMES_USERNAME = "b.alacam";
@@ -410,7 +403,7 @@
           'uk': { tr: 'BİRLEŞİK KRALLIK', en: 'UK' },
           // Diğer ülkeler eklenebilir
         };
-        const currentLang = 'tr'; // İleride 'en' yapılabilir
+        
 
         // Show status message
         function showStatus(message, type = 'info') {
@@ -1114,7 +1107,7 @@
               uniqueCountries.forEach(englishKey => {
                 const opt = document.createElement('option');
                 opt.value = englishKey;
-                const trName = countryNames[englishKey]?.[currentLang] || englishKey;
+                const trName = countryNames[englishKey]?.[currentLanguage] || englishKey;
                 opt.textContent = toTurkishUpper(trName);
                 countryFilter.appendChild(opt);
               });
@@ -1240,8 +1233,8 @@
 
           // Türkçe isme göre sırala
           uniqueCountries.sort((a, b) => {
-            const trA = toTurkishUpper(countryNames[a]?.[currentLang] || a);
-            const trB = toTurkishUpper(countryNames[b]?.[currentLang] || b);
+            const trA = toTurkishUpper(countryNames[a]?.[currentLanguage] || a);
+                const trB = toTurkishUpper(countryNames[b]?.[currentLanguage] || b);
             return trA.localeCompare(trB, 'tr');
           });
           
@@ -3336,13 +3329,7 @@
             visitedFilter.addEventListener('change', debouncedLoadTable);
           }
           
-                  // Login öncesi dil değişikliği event listener
-        if (preLoginLanguage) {
-          preLoginLanguage.addEventListener('change', () => {
-            currentLanguage = preLoginLanguage.value;
-            updatePreLoginText();
-          });
-        }
+
         
         // Login sonrası dil değişikliği event listener
         if (languageFilter) {
@@ -3356,32 +3343,7 @@
           });
         }
         
-        // Login öncesi metinleri güncelle
-        function updatePreLoginText() {
-          const texts = {
-            tr: {
-              loginButtonText: 'Google ile Giriş Yap',
-              languageLabel: 'Dil / Language:'
-            },
-            en: {
-              loginButtonText: 'Sign in with Google',
-              languageLabel: 'Language / Dil:'
-            }
-          };
-          
-          const currentTexts = texts[currentLanguage];
-          
-          if (loginButtonText) {
-            loginButtonText.textContent = currentTexts.loginButtonText;
-          }
-          
-          // Dil seçici label'ını güncelle
-          const languageLabel = document.querySelector('label[for="preLoginLanguage"]');
-          if (languageLabel) {
-            languageLabel.textContent = currentTexts.languageLabel;
-          }
-        }
-        
+
         // UI metinlerini güncelle
         function updateUIText() {
           const texts = {
@@ -3472,7 +3434,6 @@
         
         // Fonksiyonlar tanımlandıktan sonra UI metinlerini güncelle
         setTimeout(() => {
-          updatePreLoginText();
           updateUIText();
         }, 0);
         });
@@ -3588,8 +3549,8 @@
           const allCountries = Array.from(new Set(allPopular));
           // 3. Türkçe isme göre sırala
           allCountries.sort((a, b) => {
-            const trA = toTurkishUpper(countryNames[a]?.[currentLang] || a);
-            const trB = toTurkishUpper(countryNames[b]?.[currentLang] || b);
+            const trA = toTurkishUpper(countryNames[a]?.[currentLanguage] || a);
+                const trB = toTurkishUpper(countryNames[b]?.[currentLanguage] || b);
             return trA.localeCompare(trB, 'tr');
           });
           // 4. Dropdown'u doldur
@@ -3597,7 +3558,7 @@
           allCountries.forEach(englishKey => {
             const opt = document.createElement('option');
             opt.value = englishKey;
-            const trName = countryNames[englishKey]?.[currentLang] || englishKey;
+            const trName = countryNames[englishKey]?.[currentLanguage] || englishKey;
             opt.textContent = toTurkishUpper(trName);
             countryFilter.appendChild(opt);
           });
