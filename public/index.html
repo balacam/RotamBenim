@@ -283,10 +283,7 @@
             
             <!-- Filtreler -->
             <div id="filters" style="display: flex; gap: 16px; justify-content: flex-start; align-items: center; margin-bottom: 18px; margin-top: 18px; position: relative;">
-              <select id="languageFilter" style="min-width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
-                <option value="tr">Türkçe</option>
-                <option value="en">English</option>
-              </select>
+
               <select id="countryFilter" style="min-width: 140px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
               <label for="visitedFilter">Ziyaret:</label>
               <select id="visitedFilter" style="min-width: 120px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
@@ -369,7 +366,7 @@
         const placesTableBody = document.querySelector('#placesTable tbody');
         const addPlaceBtn = document.getElementById('addPlaceBtn');
         const searchBox = document.getElementById('searchBox');
-        const languageFilter = document.getElementById('languageFilter');
+
         const preLoginLanguage = document.getElementById('preLoginLanguage');
         const loginButtonText = document.getElementById('loginButtonText');
         let suggestionResults = [];
@@ -3123,17 +3120,7 @@
           });
         }
         
-        // Login sonrası dil değişikliği event listener
-        if (languageFilter) {
-          languageFilter.addEventListener('change', () => {
-            currentLanguage = languageFilter.value;
-            const user = auth.currentUser;
-            if (user) {
-              loadPlacesTable(user);
-              updateUIText();
-            }
-          });
-        }
+
         
         // Login öncesi metinleri güncelle
         function updatePreLoginText() {
