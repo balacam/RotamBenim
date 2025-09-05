@@ -283,10 +283,6 @@
             
             <!-- Filtreler -->
             <div id="filters" style="display: flex; gap: 16px; justify-content: flex-start; align-items: center; margin-bottom: 18px; margin-top: 18px; position: relative;">
-              <select id="languageFilter" style="min-width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
-                <option value="tr">Türkçe</option>
-                <option value="en">English</option>
-              </select>
               <select id="countryFilter" style="min-width: 140px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
               <label for="visitedFilter">Ziyaret:</label>
               <select id="visitedFilter" style="min-width: 120px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
@@ -1078,14 +1074,16 @@
          * @param {Object} user - Firebase Auth kullanıcı objesi
          */
         async function loadPlacesTable(user) {
+          console.log('loadPlacesTable çağrıldı, user:', user);
           if (!user || !user.uid) {
-            console.warn('Geçersiz kullanıcı objesi');
+            console.warn('Geçersiz kullanıcı objesi - kullanıcı giriş yapmamış');
             const placesContainer = domCache.get('placesTableContainer');
             if (placesContainer) {
               placesContainer.style.display = 'none';
             }
             return;
           }
+          console.log('Kullanıcı geçerli, yerler yükleniyor...');
 
           try {
             // Kullanıcının yerlerini yükle
@@ -1100,7 +1098,21 @@
 
             // Ülke filtrelerini hazırla
             const uniqueCountries = extractUniqueCountries(userPlacesList);
-            populateCountryFilter(uniqueCountries);
+            
+            // Ülke combobox'ını doldur
+            const countryFilter = domCache.get('countryFilter');
+            if (countryFilter && (countryFilter.options.length === 0 || countryFilter.options.length !== uniqueCountries.length)) {
+              countryFilter.innerHTML = '';
+              uniqueCountries.forEach(englishKey => {
+                const opt = document.createElement('option');
+                opt.value = englishKey;
+                const trName = countryNames[englishKey]?.[currentLang] || englishKey;
+                opt.textContent = toTurkishUpper(trName);
+                countryFilter.appendChild(opt);
+              });
+              // Varsayılan ülke: ALMANYA
+              if (!countryFilter.value) countryFilter.value = 'ALMANYA';
+            }
 
             // Filtrelenmiş yerleri göster
             const filteredPlaces = applyTableFilters(userPlacesList);
@@ -1108,7 +1120,7 @@
             
           } catch (error) {
             console.error('Yerler tablosu yüklenirken hata:', error);
-            showStatusMessage('Yerler yüklenirken bir hata oluştu', 'error');
+            showStatus('Yerler yüklenirken bir hata oluştu', 'error');
           }
         }
 
@@ -1118,8 +1130,10 @@
          * @returns {Promise<Array>} Kullanıcının yerlerinin listesi
          */
         async function loadUserPlacesFromFirestore(user) {
+          console.log('Firestore\'dan yerler yükleniyor, user.uid:', user.uid);
           const userPlacesCollection = collection(db, `users/${user.uid}/places`);
           const placesSnapshot = await getDocs(userPlacesCollection);
+          console.log('Firestore snapshot alındı, docs sayısı:', placesSnapshot.size);
 
           const userPlacesList = [];
           placesSnapshot.forEach(placeDoc => {
@@ -1159,27 +1173,26 @@
           const uniqueCountries = Array.from(countrySet).sort();
 
           // Türkçe isme göre sırala
-          countries.sort((a, b) => {
+          uniqueCountries.sort((a, b) => {
             const trA = toTurkishUpper(countryNames[a]?.[currentLang] || a);
             const trB = toTurkishUpper(countryNames[b]?.[currentLang] || b);
             return trA.localeCompare(trB, 'tr');
           });
-          // Ülke combobox'ını doldur (sadece ilk yüklemede veya ülke sayısı değiştiyse)
-          if (countryFilter.options.length === 0 || countryFilter.options.length !== countries.length) {
-            countryFilter.innerHTML = '';
-            countries.forEach(englishKey => {
-              const opt = document.createElement('option');
-              opt.value = englishKey;
-              const trName = countryNames[englishKey]?.[currentLang] || englishKey;
-              opt.textContent = toTurkishUpper(trName);
-              countryFilter.appendChild(opt);
-            });
-          }
-          // Varsayılan ülke: ALMANYA
-          if (!countryFilter.value) countryFilter.value = 'ALMANYA';
-          // Varsayılan ziyaret filtresi: Gezilmedi
-          if (!visitedFilter.value) visitedFilter.value = 'notvisited';
-
+          
+          return uniqueCountries;
+        }
+        
+        /**
+         * Tablo filtrelerini uygular
+         * @param {Array} places - Yerler listesi
+         * @returns {Array} Filtrelenmiş yerler
+         */
+        function applyTableFilters(places) {
+          const countryFilter = domCache.get('countryFilter');
+          const visitedFilter = domCache.get('visitedFilter');
+          
+          if (!countryFilter || !visitedFilter) return places;
+          
           // Filtreye göre verileri süz
           let filtered = [];
           const selectedCountry = countryFilter.value;
@@ -1187,9 +1200,23 @@
           filtered = places.filter(p => getEnglishCountryKeySafe(p.country) === selectedCountry);
           if (selectedVisited === 'visited') filtered = filtered.filter(p => p.visited);
           else if (selectedVisited === 'notvisited') filtered = filtered.filter(p => !p.visited);
+          
+          return filtered;
+        }
 
-          filtered.sort((a, b) => (a.city || '').localeCompare(b.city || ''));
-          filtered.forEach(data => {
+        /**
+         * Yerleri tabloda gösterir
+         * @param {Array} places - Gösterilecek yerler
+         * @param {HTMLElement} tableBody - Tablo body elementi
+         * @param {Object} user - Kullanıcı objesi
+         */
+        function renderPlacesInTable(places, tableBody, user) {
+          if (!tableBody || !places) return;
+          
+          tableBody.innerHTML = '';
+          
+          const filtered = places.slice().sort((a, b) => (a.city || '').localeCompare(b.city || ''));
+           filtered.forEach(data => {
             const row = document.createElement('tr');
             const categoryHtml = (data.category || '').replace(/\s*\/\s*/g, '<br>');
             const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((data.name || '') + ' ' + (data.city || '') + ' ' + (data.country || ''))}`;
@@ -1258,6 +1285,24 @@
           }
           
           // Şehir/Ülke öneri sistemi
+          const locationSuggestionBox = document.getElementById('locationSuggestionBox');
+          const locationSuggestions = document.getElementById('locationSuggestions');
+          
+          if (locationSuggestionBox && locationSuggestions) {
+            locationSuggestionBox.addEventListener('input', function() {
+              const inputValue = this.value.toLowerCase();
+              
+              if (inputValue.length < 2) {
+                locationSuggestions.innerHTML = '';
+                return;
+              }
+              // Öneri sistemi devamı...
+            });
+          }
+        }
+        
+        // Şehir/Ülke öneri sistemi devamı
+        function initLocationSuggestions() {
           const locationSuggestionBox = document.getElementById('locationSuggestionBox');
           const locationSuggestions = document.getElementById('locationSuggestions');
           
@@ -3162,7 +3207,13 @@
           
           get(id) {
             if (!this.elements.has(id)) {
-              const element = document.getElementById(id);
+              let element;
+              // Özel durumlar için querySelector kullan
+              if (id === 'placesTableBody') {
+                element = document.querySelector('#placesTable tbody');
+              } else {
+                element = document.getElementById(id);
+              }
               if (element) {
                 this.elements.set(id, element);
               }
@@ -3352,6 +3403,10 @@
             tableHeaders[7].textContent = currentTexts.tableHeaders.delete;
           }
         }
+        
+        // UI metinlerini güncelle
+        updatePreLoginText();
+        updateUIText();
         });
         
         // Sayfa tamamen yüklendikten sonra arka planı güncelle
@@ -3361,10 +3416,6 @@
             console.log('Sayfa yüklendi, arka plan güncelleniyor:', countryFilter.value);
             window.enhancedBackgroundManager.updateBackgroundForCountry(countryFilter.value);
           }
-          
-          // UI metinlerini güncelle
-          updatePreLoginText();
-          updateUIText();
         });
 
         // Tüm popüler ülke JSON dosyalarını otomatik bul ve oku
