@@ -247,7 +247,13 @@
             <div class="login-logo">🌍 Rotam Benim</div>
             
             <!-- Language Selection (before login) -->
-
+            <div style="margin-bottom: 20px; text-align: center;">
+                <label for="preLoginLanguage" style="display: block; margin-bottom: 8px; color: #626976; font-size: 14px;">Dil / Language:</label>
+                <select id="preLoginLanguage" style="min-width: 120px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; background: white; font-size: 14px;">
+                    <option value="tr">🇹🇷 Türkçe</option>
+                    <option value="en">🇺🇸 English</option>
+                </select>
+            </div>
             
             <!-- Login Button -->
             <button id="googleSignInBtn" class="google-btn">
@@ -277,6 +283,10 @@
             
             <!-- Filtreler -->
             <div id="filters" style="display: flex; gap: 16px; justify-content: flex-start; align-items: center; margin-bottom: 18px; margin-top: 18px; position: relative;">
+              <select id="languageFilter" style="min-width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="tr">Türkçe</option>
+                <option value="en">English</option>
+              </select>
               <select id="countryFilter" style="min-width: 140px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;"></select>
               <label for="visitedFilter">Ziyaret:</label>
               <select id="visitedFilter" style="min-width: 120px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;">
@@ -359,7 +369,8 @@
         const placesTableBody = document.querySelector('#placesTable tbody');
         const addPlaceBtn = document.getElementById('addPlaceBtn');
         const searchBox = document.getElementById('searchBox');
-
+        const languageFilter = document.getElementById('languageFilter');
+        const preLoginLanguage = document.getElementById('preLoginLanguage');
         const loginButtonText = document.getElementById('loginButtonText');
         let suggestionResults = [];
         const GEONAMES_USERNAME = "b.alacam";
@@ -403,7 +414,7 @@
           'uk': { tr: 'BİRLEŞİK KRALLIK', en: 'UK' },
           // Diğer ülkeler eklenebilir
         };
-        
+        const currentLang = 'tr'; // İleride 'en' yapılabilir
 
         // Show status message
         function showStatus(message, type = 'info') {
@@ -479,65 +490,15 @@
             }
         }
 
-        /**
-         * Güvenli çıkış işlemi - Gelişmiş hata yönetimi ile
-         * Kullanıcı verilerini temizler ve detaylı hata mesajları sağlar
-         */
+        // Handle Sign Out
         async function handleSignOut() {
             try {
-                // Çıkış işlemi başladığını göster
-                showStatus('Çıkış yapılıyor...', 'info');
-                
-                // Firebase Auth çıkış işlemi
                 await signOut(auth);
-                
-                // Cache'i temizle
-                if (typeof domCache !== 'undefined' && domCache && typeof domCache.clear === 'function') {
-                    domCache.clear();
-                }
-                
-                // Background manager'ı temizle
-                if (window.enhancedBackgroundManager && typeof window.enhancedBackgroundManager.cleanup === 'function') {
-                    window.enhancedBackgroundManager.cleanup();
-                }
-                
-                // Local storage'dan geçici verileri temizle (güvenlik için)
-                try {
-                    localStorage.removeItem('temp_user_data');
-                    sessionStorage.clear();
-                } catch (storageError) {
-                    console.warn('Storage temizleme uyarısı:', storageError);
-                }
-                
-                console.log('Çıkış işlemi başarıyla tamamlandı');
-                showStatus('Başarıyla çıkış yapıldı.', 'success');
-                
+                console.log('Çıkış başarılı');
+                showStatus('Çıkış yapıldı.', 'success');
             } catch (error) {
-                console.error('Çıkış işlemi hatası:', error);
-                
-                // Hata türüne göre kullanıcı dostu mesajlar
-                let userMessage = 'Çıkış yapılırken bir hata oluştu.';
-                
-                if (error.code === 'auth/network-request-failed') {
-                    userMessage = 'İnternet bağlantısı sorunu. Çıkış işlemi tamamlanamadı.';
-                } else if (error.code === 'auth/too-many-requests') {
-                    userMessage = 'Çok fazla istek gönderildi. Lütfen bir süre bekleyin.';
-                } else if (error.message && error.message.includes('timeout')) {
-                    userMessage = 'İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.';
-                } else if (error.message) {
-                    userMessage = `Çıkış hatası: ${error.message}`;
-                }
-                
-                showStatus(userMessage, 'error');
-                
-                // Kritik hata durumunda sayfayı yenile
-                if (error.code === 'auth/internal-error') {
-                    setTimeout(() => {
-                        if (confirm('Kritik bir hata oluştu. Sayfayı yenilemek ister misiniz?')) {
-                            window.location.reload();
-                        }
-                    }, 2000);
-                }
+                console.error('Çıkış hatası:', error);
+                showStatus('Çıkış yapılırken hata oluştu.', 'error');
             }
         }
 
@@ -568,14 +529,6 @@
         // Auth state listener
         onAuthStateChanged(auth, async (user) => {
             console.log('Auth state changed:', user ? 'User signed in' : 'User signed out');
-            if (user) {
-                console.log('Kullanıcı bilgileri:', {
-                    uid: user.uid,
-                    email: user.email,
-                    displayName: user.displayName
-                });
-                console.log('Firestore bağlantısı test ediliyor...');
-            }
             updateUI(user);
             
             if (user) {
@@ -1070,188 +1023,59 @@
           }
         }
 
-        /**
-         * Kullanıcının yerlerini tablo formatında yükler ve görüntüler
-         * @param {Object} user - Firebase Auth kullanıcı objesi
-         */
         async function loadPlacesTable(user) {
-          console.log('loadPlacesTable çağrıldı, user:', user);
-          if (!user || !user.uid) {
-            console.warn('Geçersiz kullanıcı objesi - kullanıcı giriş yapmamış');
-            const placesContainer = domCache.get('placesTableContainer');
-            if (placesContainer) {
-              placesContainer.style.display = 'none';
-            }
+          if (!user) {
+            placesTableContainer.style.display = 'none';
             return;
           }
-          console.log('Kullanıcı geçerli, yerler yükleniyor...');
+          // Kullanıcıya ait places koleksiyonu yolu
+          const placesCol = collection(db, `users/${user.uid}/places`);
+          const snapshot = await getDocs(placesCol);
 
-          try {
-            // Kullanıcının yerlerini yükle
-            const userPlacesList = await loadUserPlacesFromFirestore(user);
-            
-            // Tablo elementlerini cache'den al
-            const placesTableBody = domCache.get('placesTableBody');
-            if (!placesTableBody) {
-              console.error('Yerler tablosu bulunamadı');
-              return;
-            }
+          // Tabloyu temizle
+          placesTableBody.innerHTML = '';
 
-            // Ülke filtrelerini hazırla
-            const uniqueCountries = extractUniqueCountries(userPlacesList);
-            
-            // Ülke combobox'ını doldur
-            const countryFilter = domCache.get('countryFilter');
-            if (countryFilter && (countryFilter.options.length === 0 || countryFilter.options.length !== uniqueCountries.length)) {
-              countryFilter.innerHTML = '';
-              uniqueCountries.forEach(englishKey => {
-                const opt = document.createElement('option');
-                opt.value = englishKey;
-                const trName = countryNames[englishKey]?.[currentLanguage] || englishKey;
-                opt.textContent = toTurkishUpper(trName);
-                countryFilter.appendChild(opt);
-              });
-              // Varsayılan ülke: ALMANYA
-              if (!countryFilter.value) countryFilter.value = 'ALMANYA';
-            }
+          // Filtre comboboxlarını hazırla
+          const countryFilter = document.getElementById('countryFilter');
+          const visitedFilter = document.getElementById('visitedFilter');
+          // Arama kutusu sadece öneri için, filtreleme yok
 
-            // Filtrelenmiş yerleri göster
-            const filteredPlaces = applyTableFilters(userPlacesList);
-            renderPlacesInTable(filteredPlaces, placesTableBody, user);
-            
-          } catch (error) {
-            console.error('Yerler tablosu yüklenirken hata:', error);
-            showStatus('Yerler yüklenirken bir hata oluştu', 'error');
-          }
-        }
-
-        /**
-         * Kullanıcının yerlerini Firestore'dan yükler
-         * @param {Object} user - Firebase Auth kullanıcı objesi
-         * @returns {Promise<Array>} Kullanıcının yerlerinin listesi
-         */
-        async function loadUserPlacesFromFirestore(user) {
-          console.log('Firestore\'dan yerler yükleniyor, user.uid:', user.uid);
-          console.log('Firestore bağlantısı test ediliyor...');
-          
-          try {
-              console.log('Firestore db objesi:', db);
-              console.log('Auth objesi:', auth);
-              console.log('User token kontrol ediliyor...');
-              
-              // Auth token kontrolü
-              const token = await user.getIdToken();
-              console.log('Auth token alındı, uzunluk:', token.length);
-              
-              const userPlacesCollection = collection(db, `users/${user.uid}/places`);
-              console.log('Collection referansı oluşturuldu:', `users/${user.uid}/places`);
-              console.log('Collection objesi:', userPlacesCollection);
-              
-              console.log('getDocs çağrısı yapılıyor...');
-              const placesSnapshot = await getDocs(userPlacesCollection);
-              console.log('Firestore snapshot alındı, docs sayısı:', placesSnapshot.size);
-            
-            // Eğer hiç veri yoksa test verisi ekle
-            if (placesSnapshot.size === 0) {
-              console.log('Hiç yer bulunamadı, test verisi ekleniyor...');
-              await addTestPlace(user.uid);
-              // Test verisi eklendikten sonra tekrar yükle
-              const newSnapshot = await getDocs(userPlacesCollection);
-              console.log('Test verisi eklendikten sonra docs sayısı:', newSnapshot.size);
-              return processPlacesSnapshot(newSnapshot);
-            }
-            
-            return processPlacesSnapshot(placesSnapshot);
-          } catch (error) {
-            console.error('Firestore bağlantı hatası:', error);
-            console.error('Hata detayları:', error.message, error.code);
-            throw error;
-          }
-        }
-        
-        // Test verisi ekleme fonksiyonu
-        async function addTestPlace(userId) {
-          try {
-            const testPlace = {
-              name: 'Test Yeri',
-              city: 'İstanbul',
-              country: 'TÜRKİYE',
-              category: 'Restoran',
-              description: 'Test açıklaması',
-              visited: false,
-              createdAt: new Date()
-            };
-            
-            const userPlacesCollection = collection(db, `users/${userId}/places`);
-            await addDoc(userPlacesCollection, testPlace);
-            console.log('Test verisi başarıyla eklendi');
-          } catch (error) {
-            console.error('Test verisi eklenirken hata:', error);
-          }
-        }
-        
-        // Snapshot işleme fonksiyonu
-        function processPlacesSnapshot(placesSnapshot) {
-          console.log('Snapshot işleniyor, docs sayısı:', placesSnapshot.size);
-
-          const userPlacesList = [];
-          placesSnapshot.forEach(placeDoc => {
-            const placeData = placeDoc.data();
-            userPlacesList.push({
-              ...placeData,
-              _docId: placeDoc.id,
-              // Veri doğrulama ve varsayılan değerler
-              name: placeData.name || 'İsimsiz Yer',
-              city: placeData.city || '',
-              country: placeData.country || 'Bilinmeyen Ülke',
-              category: placeData.category || 'Genel',
-              description: placeData.description || '',
-              visited: Boolean(placeData.visited)
-            });
-          });
-
-          console.log(`${userPlacesList.length} yer Firestore'dan yüklendi`);
-          return userPlacesList;
-        }
-
-        /**
-         * Yer listesinden benzersiz ülkeleri çıkarır
-         * @param {Array} places - Yer listesi
-         * @returns {Array} Benzersiz ülkeler listesi
-         */
-        function extractUniqueCountries(places) {
+          // Tüm ülkeleri topla ve normalize et
+          const places = [];
           const countrySet = new Set();
-          
-          places.forEach(place => {
-            if (place.country) {
-              const normalizedCountryKey = getEnglishCountryKeySafe(place.country);
-              countrySet.add(normalizedCountryKey);
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            places.push({ ...data, _docId: doc.id });
+            if (data.country) {
+              // İngilizce anahtara normalize et
+              const englishKey = getEnglishCountryKeySafe(data.country);
+              countrySet.add(englishKey);
             }
           });
-
-          const uniqueCountries = Array.from(countrySet).sort();
+          const countries = Array.from(countrySet).sort();
 
           // Türkçe isme göre sırala
-          uniqueCountries.sort((a, b) => {
-            const trA = toTurkishUpper(countryNames[a]?.[currentLanguage] || a);
-                const trB = toTurkishUpper(countryNames[b]?.[currentLanguage] || b);
+          countries.sort((a, b) => {
+            const trA = toTurkishUpper(countryNames[a]?.[currentLang] || a);
+            const trB = toTurkishUpper(countryNames[b]?.[currentLang] || b);
             return trA.localeCompare(trB, 'tr');
           });
-          
-          return uniqueCountries;
-        }
-        
-        /**
-         * Tablo filtrelerini uygular
-         * @param {Array} places - Yerler listesi
-         * @returns {Array} Filtrelenmiş yerler
-         */
-        function applyTableFilters(places) {
-          const countryFilter = domCache.get('countryFilter');
-          const visitedFilter = domCache.get('visitedFilter');
-          
-          if (!countryFilter || !visitedFilter) return places;
-          
+          // Ülke combobox'ını doldur (sadece ilk yüklemede veya ülke sayısı değiştiyse)
+          if (countryFilter.options.length === 0 || countryFilter.options.length !== countries.length) {
+            countryFilter.innerHTML = '';
+            countries.forEach(englishKey => {
+              const opt = document.createElement('option');
+              opt.value = englishKey;
+              const trName = countryNames[englishKey]?.[currentLang] || englishKey;
+              opt.textContent = toTurkishUpper(trName);
+              countryFilter.appendChild(opt);
+            });
+          }
+          // Varsayılan ülke: ALMANYA
+          if (!countryFilter.value) countryFilter.value = 'ALMANYA';
+          // Varsayılan ziyaret filtresi: Gezilmedi
+          if (!visitedFilter.value) visitedFilter.value = 'notvisited';
+
           // Filtreye göre verileri süz
           let filtered = [];
           const selectedCountry = countryFilter.value;
@@ -1259,23 +1083,9 @@
           filtered = places.filter(p => getEnglishCountryKeySafe(p.country) === selectedCountry);
           if (selectedVisited === 'visited') filtered = filtered.filter(p => p.visited);
           else if (selectedVisited === 'notvisited') filtered = filtered.filter(p => !p.visited);
-          
-          return filtered;
-        }
 
-        /**
-         * Yerleri tabloda gösterir
-         * @param {Array} places - Gösterilecek yerler
-         * @param {HTMLElement} tableBody - Tablo body elementi
-         * @param {Object} user - Kullanıcı objesi
-         */
-        function renderPlacesInTable(places, tableBody, user) {
-          if (!tableBody || !places) return;
-          
-          tableBody.innerHTML = '';
-          
-          const filtered = places.slice().sort((a, b) => (a.city || '').localeCompare(b.city || ''));
-           filtered.forEach(data => {
+          filtered.sort((a, b) => (a.city || '').localeCompare(b.city || ''));
+          filtered.forEach(data => {
             const row = document.createElement('tr');
             const categoryHtml = (data.category || '').replace(/\s*\/\s*/g, '<br>');
             const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((data.name || '') + ' ' + (data.city || '') + ' ' + (data.country || ''))}`;
@@ -1344,24 +1154,6 @@
           }
           
           // Şehir/Ülke öneri sistemi
-          const locationSuggestionBox = document.getElementById('locationSuggestionBox');
-          const locationSuggestions = document.getElementById('locationSuggestions');
-          
-          if (locationSuggestionBox && locationSuggestions) {
-            locationSuggestionBox.addEventListener('input', function() {
-              const inputValue = this.value.toLowerCase();
-              
-              if (inputValue.length < 2) {
-                locationSuggestions.innerHTML = '';
-                return;
-              }
-              // Öneri sistemi devamı...
-            });
-          }
-        }
-        
-        // Şehir/Ülke öneri sistemi devamı
-        function initLocationSuggestions() {
           const locationSuggestionBox = document.getElementById('locationSuggestionBox');
           const locationSuggestions = document.getElementById('locationSuggestions');
           
@@ -3266,13 +3058,7 @@
           
           get(id) {
             if (!this.elements.has(id)) {
-              let element;
-              // Özel durumlar için querySelector kullan
-              if (id === 'placesTableBody') {
-                element = document.querySelector('#placesTable tbody');
-              } else {
-                element = document.getElementById(id);
-              }
+              const element = document.getElementById(id);
               if (element) {
                 this.elements.set(id, element);
               }
@@ -3329,12 +3115,52 @@
             visitedFilter.addEventListener('change', debouncedLoadTable);
           }
           
-
+                  // Login öncesi dil değişikliği event listener
+        if (preLoginLanguage) {
+          preLoginLanguage.addEventListener('change', () => {
+            currentLanguage = preLoginLanguage.value;
+            updatePreLoginText();
+          });
+        }
         
         // Login sonrası dil değişikliği event listener
-
+        if (languageFilter) {
+          languageFilter.addEventListener('change', () => {
+            currentLanguage = languageFilter.value;
+            const user = auth.currentUser;
+            if (user) {
+              loadPlacesTable(user);
+              updateUIText();
+            }
+          });
+        }
         
-
+        // Login öncesi metinleri güncelle
+        function updatePreLoginText() {
+          const texts = {
+            tr: {
+              loginButtonText: 'Google ile Giriş Yap',
+              languageLabel: 'Dil / Language:'
+            },
+            en: {
+              loginButtonText: 'Sign in with Google',
+              languageLabel: 'Language / Dil:'
+            }
+          };
+          
+          const currentTexts = texts[currentLanguage];
+          
+          if (loginButtonText) {
+            loginButtonText.textContent = currentTexts.loginButtonText;
+          }
+          
+          // Dil seçici label'ını güncelle
+          const languageLabel = document.querySelector('label[for="preLoginLanguage"]');
+          if (languageLabel) {
+            languageLabel.textContent = currentTexts.languageLabel;
+          }
+        }
+        
         // UI metinlerini güncelle
         function updateUIText() {
           const texts = {
@@ -3422,11 +3248,6 @@
             tableHeaders[7].textContent = currentTexts.tableHeaders.delete;
           }
         }
-        
-        // Fonksiyonlar tanımlandıktan sonra UI metinlerini güncelle
-        setTimeout(() => {
-          updateUIText();
-        }, 0);
         });
         
         // Sayfa tamamen yüklendikten sonra arka planı güncelle
@@ -3436,6 +3257,10 @@
             console.log('Sayfa yüklendi, arka plan güncelleniyor:', countryFilter.value);
             window.enhancedBackgroundManager.updateBackgroundForCountry(countryFilter.value);
           }
+          
+          // UI metinlerini güncelle
+          updatePreLoginText();
+          updateUIText();
         });
 
         // Tüm popüler ülke JSON dosyalarını otomatik bul ve oku
@@ -3540,8 +3365,8 @@
           const allCountries = Array.from(new Set(allPopular));
           // 3. Türkçe isme göre sırala
           allCountries.sort((a, b) => {
-            const trA = toTurkishUpper(countryNames[a]?.[currentLanguage] || a);
-                const trB = toTurkishUpper(countryNames[b]?.[currentLanguage] || b);
+            const trA = toTurkishUpper(countryNames[a]?.[currentLang] || a);
+            const trB = toTurkishUpper(countryNames[b]?.[currentLang] || b);
             return trA.localeCompare(trB, 'tr');
           });
           // 4. Dropdown'u doldur
@@ -3549,7 +3374,7 @@
           allCountries.forEach(englishKey => {
             const opt = document.createElement('option');
             opt.value = englishKey;
-            const trName = countryNames[englishKey]?.[currentLanguage] || englishKey;
+            const trName = countryNames[englishKey]?.[currentLang] || englishKey;
             opt.textContent = toTurkishUpper(trName);
             countryFilter.appendChild(opt);
           });
