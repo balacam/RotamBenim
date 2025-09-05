@@ -490,15 +490,65 @@
             }
         }
 
-        // Handle Sign Out
+        /**
+         * Güvenli çıkış işlemi - Gelişmiş hata yönetimi ile
+         * Kullanıcı verilerini temizler ve detaylı hata mesajları sağlar
+         */
         async function handleSignOut() {
             try {
+                // Çıkış işlemi başladığını göster
+                showStatus('Çıkış yapılıyor...', 'info');
+                
+                // Firebase Auth çıkış işlemi
                 await signOut(auth);
-                console.log('Çıkış başarılı');
-                showStatus('Çıkış yapıldı.', 'success');
+                
+                // Cache'i temizle
+                if (typeof domCache !== 'undefined' && domCache && typeof domCache.clear === 'function') {
+                    domCache.clear();
+                }
+                
+                // Background manager'ı temizle
+                if (window.enhancedBackgroundManager && typeof window.enhancedBackgroundManager.cleanup === 'function') {
+                    window.enhancedBackgroundManager.cleanup();
+                }
+                
+                // Local storage'dan geçici verileri temizle (güvenlik için)
+                try {
+                    localStorage.removeItem('temp_user_data');
+                    sessionStorage.clear();
+                } catch (storageError) {
+                    console.warn('Storage temizleme uyarısı:', storageError);
+                }
+                
+                console.log('Çıkış işlemi başarıyla tamamlandı');
+                showStatus('Başarıyla çıkış yapıldı.', 'success');
+                
             } catch (error) {
-                console.error('Çıkış hatası:', error);
-                showStatus('Çıkış yapılırken hata oluştu.', 'error');
+                console.error('Çıkış işlemi hatası:', error);
+                
+                // Hata türüne göre kullanıcı dostu mesajlar
+                let userMessage = 'Çıkış yapılırken bir hata oluştu.';
+                
+                if (error.code === 'auth/network-request-failed') {
+                    userMessage = 'İnternet bağlantısı sorunu. Çıkış işlemi tamamlanamadı.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    userMessage = 'Çok fazla istek gönderildi. Lütfen bir süre bekleyin.';
+                } else if (error.message && error.message.includes('timeout')) {
+                    userMessage = 'İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.';
+                } else if (error.message) {
+                    userMessage = `Çıkış hatası: ${error.message}`;
+                }
+                
+                showStatus(userMessage, 'error');
+                
+                // Kritik hata durumunda sayfayı yenile
+                if (error.code === 'auth/internal-error') {
+                    setTimeout(() => {
+                        if (confirm('Kritik bir hata oluştu. Sayfayı yenilemek ister misiniz?')) {
+                            window.location.reload();
+                        }
+                    }, 2000);
+                }
             }
         }
 
@@ -1023,36 +1073,90 @@
           }
         }
 
+        /**
+         * Kullanıcının yerlerini tablo formatında yükler ve görüntüler
+         * @param {Object} user - Firebase Auth kullanıcı objesi
+         */
         async function loadPlacesTable(user) {
-          if (!user) {
-            placesTableContainer.style.display = 'none';
+          if (!user || !user.uid) {
+            console.warn('Geçersiz kullanıcı objesi');
+            const placesContainer = domCache.get('placesTableContainer');
+            if (placesContainer) {
+              placesContainer.style.display = 'none';
+            }
             return;
           }
-          // Kullanıcıya ait places koleksiyonu yolu
-          const placesCol = collection(db, `users/${user.uid}/places`);
-          const snapshot = await getDocs(placesCol);
 
-          // Tabloyu temizle
-          placesTableBody.innerHTML = '';
+          try {
+            // Kullanıcının yerlerini yükle
+            const userPlacesList = await loadUserPlacesFromFirestore(user);
+            
+            // Tablo elementlerini cache'den al
+            const placesTableBody = domCache.get('placesTableBody');
+            if (!placesTableBody) {
+              console.error('Yerler tablosu bulunamadı');
+              return;
+            }
 
-          // Filtre comboboxlarını hazırla
-          const countryFilter = document.getElementById('countryFilter');
-          const visitedFilter = document.getElementById('visitedFilter');
-          // Arama kutusu sadece öneri için, filtreleme yok
+            // Ülke filtrelerini hazırla
+            const uniqueCountries = extractUniqueCountries(userPlacesList);
+            populateCountryFilter(uniqueCountries);
 
-          // Tüm ülkeleri topla ve normalize et
-          const places = [];
+            // Filtrelenmiş yerleri göster
+            const filteredPlaces = applyTableFilters(userPlacesList);
+            renderPlacesInTable(filteredPlaces, placesTableBody, user);
+            
+          } catch (error) {
+            console.error('Yerler tablosu yüklenirken hata:', error);
+            showStatusMessage('Yerler yüklenirken bir hata oluştu', 'error');
+          }
+        }
+
+        /**
+         * Kullanıcının yerlerini Firestore'dan yükler
+         * @param {Object} user - Firebase Auth kullanıcı objesi
+         * @returns {Promise<Array>} Kullanıcının yerlerinin listesi
+         */
+        async function loadUserPlacesFromFirestore(user) {
+          const userPlacesCollection = collection(db, `users/${user.uid}/places`);
+          const placesSnapshot = await getDocs(userPlacesCollection);
+
+          const userPlacesList = [];
+          placesSnapshot.forEach(placeDoc => {
+            const placeData = placeDoc.data();
+            userPlacesList.push({
+              ...placeData,
+              _docId: placeDoc.id,
+              // Veri doğrulama ve varsayılan değerler
+              name: placeData.name || 'İsimsiz Yer',
+              city: placeData.city || '',
+              country: placeData.country || 'Bilinmeyen Ülke',
+              category: placeData.category || 'Genel',
+              description: placeData.description || '',
+              visited: Boolean(placeData.visited)
+            });
+          });
+
+          console.log(`${userPlacesList.length} yer Firestore'dan yüklendi`);
+          return userPlacesList;
+        }
+
+        /**
+         * Yer listesinden benzersiz ülkeleri çıkarır
+         * @param {Array} places - Yer listesi
+         * @returns {Array} Benzersiz ülkeler listesi
+         */
+        function extractUniqueCountries(places) {
           const countrySet = new Set();
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            places.push({ ...data, _docId: doc.id });
-            if (data.country) {
-              // İngilizce anahtara normalize et
-              const englishKey = getEnglishCountryKeySafe(data.country);
-              countrySet.add(englishKey);
+          
+          places.forEach(place => {
+            if (place.country) {
+              const normalizedCountryKey = getEnglishCountryKeySafe(place.country);
+              countrySet.add(normalizedCountryKey);
             }
           });
-          const countries = Array.from(countrySet).sort();
+
+          const uniqueCountries = Array.from(countrySet).sort();
 
           // Türkçe isme göre sırala
           countries.sort((a, b) => {
@@ -3052,22 +3156,67 @@
             window.open(googleMapsUrl, '_blank');
           }
 
-        // Filtre değişince tabloyu güncelle
-        document.addEventListener('DOMContentLoaded', () => {
-          const countryFilter = document.getElementById('countryFilter');
-          const visitedFilter = document.getElementById('visitedFilter');
-          if (countryFilter && visitedFilter) {
-            countryFilter.addEventListener('change', () => {
-              const user = auth.currentUser;
-              if (user) loadPlacesTable(user);
-              if (window.enhancedBackgroundManager) {
-                window.enhancedBackgroundManager.updateBackgroundForCountry(countryFilter.value);
+        // DOM Cache Sistemi - Performans Optimizasyonu
+        const domCache = {
+          elements: new Map(),
+          
+          get(id) {
+            if (!this.elements.has(id)) {
+              const element = document.getElementById(id);
+              if (element) {
+                this.elements.set(id, element);
               }
-            });
-            visitedFilter.addEventListener('change', () => {
+            }
+            return this.elements.get(id) || null;
+          },
+          
+          clear() {
+            this.elements.clear();
+          },
+          
+          // Çoklu element seçimi için optimize edilmiş fonksiyon
+          queryAll(selector) {
+            return document.querySelectorAll(selector);
+          }
+        };
+
+        // Debounce fonksiyonu - API çağrılarını optimize etmek için
+        function debounce(func, wait) {
+          let timeout;
+          return function executedFunction(...args) {
+            const later = () => {
+              clearTimeout(timeout);
+              func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+          };
+        }
+
+        // Filtre değişince tabloyu güncelle - Optimize edilmiş versiyon
+        document.addEventListener('DOMContentLoaded', () => {
+          const countryFilter = domCache.get('countryFilter');
+          const visitedFilter = domCache.get('visitedFilter');
+          
+          if (countryFilter && visitedFilter) {
+            // Debounced fonksiyonlar oluştur
+            const debouncedLoadTable = debounce(() => {
               const user = auth.currentUser;
               if (user) loadPlacesTable(user);
+            }, 300);
+            
+            const debouncedUpdateBackground = debounce((value) => {
+              if (window.enhancedBackgroundManager) {
+                window.enhancedBackgroundManager.updateBackgroundForCountry(value);
+              }
+            }, 200);
+            
+            countryFilter.addEventListener('change', () => {
+              debouncedLoadTable();
+              debouncedUpdateBackground(countryFilter.value);
             });
+            
+            visitedFilter.addEventListener('change', debouncedLoadTable);
           }
           
                   // Login öncesi dil değişikliği event listener

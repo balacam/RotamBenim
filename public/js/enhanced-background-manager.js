@@ -7,7 +7,14 @@ class EnhancedBackgroundManager {
     constructor() {
         this.backgrounds = new Map();
         this.currentCountry = null;
-        this.pexelsApiKey = 'qLDLKWTXLouQCKT40OyIA982lb5kv0ftITaaLYbaOrx2FKNbGf5sZlYF'; // Replace with your Pexels API key
+        // Güvenlik: API anahtarını environment variable'dan al
+        this.pexelsApiKey = this.getApiKey();
+        
+        // Rate limiting için
+        this.requestQueue = [];
+        this.isProcessingQueue = false;
+        this.maxRequestsPerMinute = 50;
+        this.requestTimestamps = [];
         this.isInitialized = false;
         this.cache = new Map();
         this.preloadedImages = new Set();
@@ -195,6 +202,51 @@ class EnhancedBackgroundManager {
     }
 
     /**
+     * Güvenli API anahtarı alma fonksiyonu
+     */
+    getApiKey() {
+        // Production'da environment variable'dan al
+        if (typeof process !== 'undefined' && process.env && process.env.PEXELS_API_KEY) {
+            return process.env.PEXELS_API_KEY;
+        }
+        
+        // Development için localStorage'dan al (güvenli değil, sadece geliştirme için)
+        const storedKey = localStorage.getItem('pexels_api_key');
+        if (storedKey && storedKey !== 'YOUR_PEXELS_API_KEY_HERE') {
+            return storedKey;
+        }
+        
+        console.warn('Pexels API anahtarı bulunamadı. Lütfen API anahtarını ayarlayın.');
+        return null;
+    }
+
+    /**
+     * Rate limiting kontrolü
+     */
+    canMakeRequest() {
+        const now = Date.now();
+        const oneMinuteAgo = now - 60000;
+        
+        // Eski timestamp'leri temizle
+        this.requestTimestamps = this.requestTimestamps.filter(timestamp => timestamp > oneMinuteAgo);
+        
+        return this.requestTimestamps.length < this.maxRequestsPerMinute;
+    }
+
+    /**
+     * Input sanitization fonksiyonu
+     */
+    sanitizeInput(input) {
+        if (typeof input !== 'string') return '';
+        
+        // XSS koruması için tehlikeli karakterleri temizle
+        return input
+            .replace(/[<>"'&]/g, '')
+            .trim()
+            .substring(0, 100); // Maksimum uzunluk sınırı
+    }
+
+    /**
      * Fetch background image from Pexels API
      * @param {string} country - Country key
      * @param {string} section - Section identifier (optional)
@@ -203,16 +255,36 @@ class EnhancedBackgroundManager {
         // country artık İngilizce anahtar olmalı
         const englishKey = this.getEnglishCountryKey(country);
         console.log('[fetchBackgroundFromPexels] country:', country, 'englishKey:', englishKey, 'section:', section);
+        
+        if (!this.pexelsApiKey) {
+            console.warn('Pexels API anahtarı bulunamadı');
+            const fallbackUrl = this.fallbackImages[englishKey] || this.fallbackImages.default;
+            this.applyBackground(englishKey, fallbackUrl, section);
+            return fallbackUrl;
+        }
+
+        // Rate limiting kontrolü
+        if (!this.canMakeRequest()) {
+            console.warn('API rate limit aşıldı, istek bekletiliyor...');
+            await new Promise(resolve => setTimeout(resolve, 60000));
+        }
+        
         const queries = this.countryQueries[englishKey] || this.countryQueries.default;
         const randomQuery = `${englishKey} ${queries[Math.floor(Math.random() * queries.length)]} ${Math.floor(Math.random() * 10000)}`;
-        console.log('[fetchBackgroundFromPexels] randomQuery:', randomQuery);
+        const sanitizedQuery = this.sanitizeInput(randomQuery);
+        console.log('[fetchBackgroundFromPexels] sanitizedQuery:', sanitizedQuery);
+        
         try {
+            this.requestTimestamps.push(Date.now());
+            
             const response = await fetch(
-                `https://api.pexels.com/v1/search?query=${encodeURIComponent(randomQuery)}&per_page=15&orientation=landscape`,
+                `https://api.pexels.com/v1/search?query=${encodeURIComponent(sanitizedQuery)}&per_page=15&orientation=landscape`,
                 {
                     headers: {
                         'Authorization': this.pexelsApiKey
-                    }
+                    },
+                    // Güvenlik için timeout ekle
+                    signal: AbortSignal.timeout(10000)
                 }
             );
             console.log('[fetchBackgroundFromPexels] response.ok:', response.ok, 'status:', response.status);
@@ -228,7 +300,7 @@ class EnhancedBackgroundManager {
                 this.applyBackground(englishKey, imageUrl, section);
                 return imageUrl;
             } else {
-                console.warn('[fetchBackgroundFromPexels] No photos found for query:', randomQuery);
+                console.warn('[fetchBackgroundFromPexels] No photos found for query:', sanitizedQuery);
                 throw new Error('No photos found');
             }
         } catch (error) {
