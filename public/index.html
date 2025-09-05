@@ -359,7 +359,7 @@
         const placesTableBody = document.querySelector('#placesTable tbody');
         const addPlaceBtn = document.getElementById('addPlaceBtn');
         const searchBox = document.getElementById('searchBox');
-        const languageFilter = document.getElementById('languageFilter');
+
         const loginButtonText = document.getElementById('loginButtonText');
         let suggestionResults = [];
         const GEONAMES_USERNAME = "b.alacam";
@@ -3332,16 +3332,7 @@
 
         
         // Login sonrası dil değişikliği event listener
-        if (languageFilter) {
-          languageFilter.addEventListener('change', () => {
-            currentLanguage = languageFilter.value;
-            const user = auth.currentUser;
-            if (user) {
-              loadPlacesTable(user);
-              updateUIText();
-            }
-          });
-        }
+
         
 
         // UI metinlerini güncelle
