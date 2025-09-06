@@ -291,14 +291,12 @@
                 <option value="visited">Gezildi</option>
                 <option value="notvisited" selected>Gezilmedi</option>
               </select>
-              <input id="searchBox" class="form-control awesomplete" type="text" placeholder="Yeni yer adı..." style="min-width: 180px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc;" autocomplete="off" />
-              <button id="addPlaceBtn" style="padding: 6px 18px; border-radius: 6px; border: none; background: #206bc4; color: white; font-weight: 500; cursor: pointer;">Ekle</button>
+              <input id="universalSearchBox" class="form-control awesomplete" type="text" placeholder="Yer, şehir veya ülke adı..." style="min-width: 300px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc;" autocomplete="off" list="locationSuggestions" />
+              <button id="universalAddBtn" style="padding: 8px 20px; border-radius: 6px; border: none; background: #206bc4; color: white; font-weight: 500; cursor: pointer; margin-left: 10px;">Akıllı Ekle</button>
               
-              <input id="locationSuggestionBox" type="text" placeholder="Şehir veya ülke adı..." style="min-width: 180px; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; margin-left: 15px;" autocomplete="off" list="locationSuggestions" />
               <datalist id="locationSuggestions">
                 <!-- Dinamik öneriler buraya eklenecek -->
               </datalist>
-              <button id="addLocationBtn" style="padding: 6px 18px; border-radius: 6px; border: none; background: #28a745; color: white; font-weight: 500; cursor: pointer;">Turistik Yerleri Ekle</button>
             </div>
             
             <!-- Gezilecek Yerler Tablosu -->
@@ -364,8 +362,8 @@
         const statusMessage = document.getElementById('statusMessage');
         const placesTableContainer = document.getElementById('placesTableContainer');
         const placesTableBody = document.querySelector('#placesTable tbody');
-        const addPlaceBtn = document.getElementById('addPlaceBtn');
-        const searchBox = document.getElementById('searchBox');
+        const universalAddBtn = document.getElementById('universalAddBtn');
+        const universalSearchBox = document.getElementById('universalSearchBox');
 
         const preLoginLanguage = document.getElementById('preLoginLanguage');
         const loginButtonText = document.getElementById('loginButtonText');
@@ -593,7 +591,7 @@
         logoutBtn.addEventListener('click', handleSignOut);
         
         // Awesomplete ile öneri getir
-        const awesomplete = new Awesomplete(searchBox, {
+        const awesomplete = new Awesomplete(universalSearchBox, {
           minChars: 2,
           maxItems: 10,
           autoFirst: true,
@@ -613,8 +611,8 @@
           }
         });
         let lastSuggestions = [];
-        searchBox.addEventListener('input', async () => {
-          const query = searchBox.value.trim();
+        universalSearchBox.addEventListener('input', async () => {
+          const query = universalSearchBox.value.trim();
           if (!query) {
             awesomplete.list = [];
             lastSuggestions = [];
@@ -721,15 +719,15 @@
           lastSuggestions = allResults;
         });
         // Seçim veya enter ile ekle
-        searchBox.addEventListener('awesomplete-selectcomplete', async (e) => {
+        universalSearchBox.addEventListener('awesomplete-selectcomplete', async (e) => {
           const user = auth.currentUser;
           if (!user) {
             showStatus('Giriş yapmadan yer ekleyemezsiniz.', 'error');
             return;
           }
-          const selectedLabel = searchBox.value.trim();
+          const selectedLabel = universalSearchBox.value.trim();
           const item = lastSuggestions.find(s => s.label === selectedLabel) || { value: selectedLabel, description: '', source: 'manual' };
-          addPlaceBtn.disabled = true;
+          universalAddBtn.disabled = true;
           try {
             // Eğer seçilen öğe popüler yerlerden geldiyse, doğrudan o veriyi kullan
             if (item.source === 'popular' && item.data) {
@@ -788,12 +786,12 @@
               }
             }
             showStatus('Yeni yer eklendi!', 'success');
-            searchBox.value = '';
-            addPlaceBtn.disabled = false;
+            universalSearchBox.value = '';
+            universalAddBtn.disabled = false;
             loadPlacesTable(user);
           } catch (err) {
             showStatus('Yer eklenirken hata: ' + err.message, 'error');
-            addPlaceBtn.disabled = false;
+            universalAddBtn.disabled = false;
           }
         });
 
@@ -1142,75 +1140,151 @@
             });
           }
 
-          // Şehir/Ülke ekleme butonu event listener
-          const addLocationBtn = document.getElementById('addLocationBtn');
-          if (addLocationBtn) {
-            addLocationBtn.addEventListener('click', () => {
-              addTouristPlacesForLocation();
-            });
-          }
+          // Akıllı ekleme butonu event listener
+          universalAddBtn.addEventListener('click', async () => {
+            const inputValue = universalSearchBox.value.trim();
+            if (!inputValue) {
+              showStatus('Lütfen bir yer, şehir veya ülke adı girin!', 'error');
+              return;
+            }
+            
+            const user = auth.currentUser;
+            if (!user) {
+              showStatus('Lütfen önce giriş yapın!', 'error');
+              return;
+            }
+            
+            // Akıllı tespit sistemi
+            await smartAddLocation(inputValue, user);
+          });
           
-          // Şehir/Ülke öneri sistemi
-          const locationSuggestionBox = document.getElementById('locationSuggestionBox');
-          const locationSuggestions = document.getElementById('locationSuggestions');
-          
-          if (locationSuggestionBox && locationSuggestions) {
-            locationSuggestionBox.addEventListener('input', function() {
-              const inputValue = this.value.toLowerCase();
+          // Akıllı tespit fonksiyonu
+          async function smartAddLocation(inputValue, user) {
+            try {
+              showStatus('Girilen metin analiz ediliyor...', 'info');
               
-              if (inputValue.length < 2) {
-                locationSuggestions.innerHTML = '';
+              // 1. Önce popüler yerler JSON'unda ara (özel yer)
+              let placeData = null;
+              try {
+                const response = await fetch('/popular-places.json');
+                const popularPlaces = await response.json();
+                placeData = popularPlaces.find(p =>
+                  p.name_tr?.toLowerCase().includes(inputValue.toLowerCase()) ||
+                  p.name_en?.toLowerCase().includes(inputValue.toLowerCase())
+                );
+              } catch {}
+              
+              if (placeData) {
+                // Özel yer olarak ekle
+                await addDoc(collection(db, `users/${user.uid}/places`), {
+                  name: placeData.name_tr || inputValue,
+                  city: placeData.city_tr || '',
+                  country: (placeData.country_tr || '').toUpperCase(),
+                  category: placeData.category_tr || '',
+                  description: placeData.description_tr || '',
+                  visited: false,
+                  name_en: placeData.name_en || '',
+                  city_en: placeData.city_en || '',
+                  country_en: (placeData.country_en || '').toUpperCase(),
+                  category_en: placeData.category_en || '',
+                  description_en: placeData.description_en || ''
+                });
+                showStatus(`${inputValue} özel yer olarak eklendi!`, 'success');
+                universalSearchBox.value = '';
+                loadPlacesTable(user);
                 return;
               }
               
-              // Şehir ve ülke önerileri listesi
-              const suggestions = [
-                // Popüler şehirler
-                'Aachen', 'Berlin', 'München', 'Hamburg', 'Köln', 'Frankfurt', 'Stuttgart', 'Düsseldorf',
-                'Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Bordeaux', 'Lille', 'Strasbourg',
-                'Roma', 'Milano', 'Napoli', 'Torino', 'Venezia', 'Firenze', 'Bologna', 'Palermo',
-                'Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Bilbao', 'Málaga', 'Zaragoza', 'Murcia',
-                'London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Glasgow', 'Edinburgh', 'Bristol',
-                'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego',
-                'Tokyo', 'Osaka', 'Kyoto', 'Yokohama', 'Nagoya', 'Sapporo', 'Fukuoka', 'Kobe',
-                'Istanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep',
-                // Ülkeler
-                'Germany', 'France', 'Italy', 'Spain', 'United Kingdom', 'United States', 'Japan', 'Turkey',
-                'Netherlands', 'Belgium', 'Switzerland', 'Austria', 'Portugal', 'Greece', 'Poland',
-                'Czech Republic', 'Hungary', 'Romania', 'Bulgaria', 'Croatia', 'Slovakia', 'Slovenia',
-                'Estonia', 'Latvia', 'Lithuania', 'Canada', 'Australia', 'South Korea', 'China', 'India',
-                'Brazil', 'Russia', 'Mexico', 'Argentina'
-              ];
+              // 2. Şehir/ülke kontrolü - büyük harfle başlıyorsa veya bilinen şehir/ülke isimleri
+              const cityCountryKeywords = ['city', 'şehir', 'ülke', 'country'];
+              const knownCities = ['istanbul', 'ankara', 'izmir', 'berlin', 'paris', 'london', 'rome', 'madrid', 'barcelona', 'munich', 'vienna', 'prague', 'budapest', 'warsaw', 'amsterdam', 'brussels', 'zurich', 'geneva', 'milan', 'florence', 'venice', 'naples', 'lisbon', 'porto', 'athens', 'dublin', 'edinburgh', 'stockholm', 'oslo', 'copenhagen', 'helsinki'];
+              const knownCountries = ['turkey', 'türkiye', 'germany', 'almanya', 'france', 'fransa', 'italy', 'italya', 'spain', 'ispanya', 'england', 'ingiltere', 'netherlands', 'hollanda', 'belgium', 'belçika', 'austria', 'avusturya', 'switzerland', 'isviçre', 'portugal', 'portekiz', 'greece', 'yunanistan'];
               
-              // Filtreleme
-              const filteredSuggestions = suggestions.filter(suggestion => 
-                suggestion.toLowerCase().includes(inputValue)
-              ).slice(0, 10); // İlk 10 öneriyi göster
+              const isCity = knownCities.some(city => inputValue.toLowerCase().includes(city));
+              const isCountry = knownCountries.some(country => inputValue.toLowerCase().includes(country));
+              const startsWithCapital = /^[A-ZÇĞİÖŞÜ]/.test(inputValue);
               
-              // Datalist'i güncelle
-              locationSuggestions.innerHTML = '';
-              filteredSuggestions.forEach(suggestion => {
-                const option = document.createElement('option');
-                option.value = suggestion;
-                locationSuggestions.appendChild(option);
+              if (isCity || isCountry || startsWithCapital) {
+                // Şehir/ülke için turistik yerler ekle
+                await addTouristPlacesForLocation(inputValue, user);
+                return;
+              }
+              
+              // 3. Varsayılan: özel yer olarak ekle
+              await addDoc(collection(db, `users/${user.uid}/places`), {
+                name: inputValue,
+                city: '',
+                country: (countryFilter.value || '').toUpperCase(),
+                category: '',
+                description: '',
+                visited: false
               });
-            });
+              showStatus(`${inputValue} yer olarak eklendi!`, 'success');
+              universalSearchBox.value = '';
+              loadPlacesTable(user);
+              
+            } catch (err) {
+              showStatus('Ekleme sırasında hata: ' + err.message, 'error');
+            }
           }
 
           placesTableContainer.style.display = '';
+          
+          // Şehir/Ülke önerileri için input event listener
+          universalSearchBox.addEventListener('input', function() {
+            const inputValue = this.value.toLowerCase();
+            const locationSuggestions = document.getElementById('locationSuggestions');
+            
+            if (inputValue.length < 2) {
+              locationSuggestions.innerHTML = '';
+              return;
+            }
+            
+            // Şehir ve ülke önerileri listesi
+            const suggestions = [
+              // Popüler şehirler
+              'Aachen', 'Berlin', 'München', 'Hamburg', 'Köln', 'Frankfurt', 'Stuttgart', 'Düsseldorf',
+              'Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Bordeaux', 'Lille', 'Strasbourg',
+              'Roma', 'Milano', 'Napoli', 'Torino', 'Venezia', 'Firenze', 'Bologna', 'Palermo',
+              'Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Bilbao', 'Málaga', 'Zaragoza', 'Murcia',
+              'London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Glasgow', 'Edinburgh', 'Bristol',
+              'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego',
+              'Tokyo', 'Osaka', 'Kyoto', 'Yokohama', 'Nagoya', 'Sapporo', 'Fukuoka', 'Kobe',
+              'Istanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep',
+              // Ülkeler
+              'Germany', 'Almanya', 'France', 'Fransa', 'Italy', 'İtalya', 'Spain', 'İspanya', 
+              'United Kingdom', 'İngiltere', 'United States', 'Amerika', 'Japan', 'Japonya', 'Turkey', 'Türkiye',
+              'Netherlands', 'Hollanda', 'Belgium', 'Belçika', 'Switzerland', 'İsviçre', 'Austria', 'Avusturya', 
+              'Portugal', 'Portekiz', 'Greece', 'Yunanistan', 'Poland', 'Polonya',
+              'Czech Republic', 'Çek Cumhuriyeti', 'Hungary', 'Macaristan', 'Romania', 'Romanya', 
+              'Bulgaria', 'Bulgaristan', 'Croatia', 'Hırvatistan', 'Slovakia', 'Slovakya', 'Slovenia', 'Slovenya',
+              'Estonia', 'Estonya', 'Latvia', 'Letonya', 'Lithuania', 'Litvanya', 'Canada', 'Kanada', 
+              'Australia', 'Avustralya', 'South Korea', 'Güney Kore', 'China', 'Çin', 'India', 'Hindistan',
+              'Brazil', 'Brezilya', 'Russia', 'Rusya', 'Mexico', 'Meksika', 'Argentina', 'Arjantin'
+            ];
+            
+            // Filtreleme
+            const filteredSuggestions = suggestions.filter(suggestion => 
+              suggestion.toLowerCase().includes(inputValue)
+            ).slice(0, 10); // İlk 10 öneriyi göster
+            
+            // Datalist'i güncelle
+            locationSuggestions.innerHTML = '';
+            filteredSuggestions.forEach(suggestion => {
+              const option = document.createElement('option');
+              option.value = suggestion;
+              locationSuggestions.appendChild(option);
+            });
+          });
         }
 
         // Şehir/Ülke için turistik yerler ekleme fonksiyonu
-         async function addTouristPlacesForLocation() {
-           const locationInput = document.getElementById('locationSuggestionBox');
-           const location = locationInput.value.trim();
-           
+         async function addTouristPlacesForLocation(location, user) {
            if (!location) {
              showStatus('Lütfen bir şehir veya ülke adı girin!', 'error');
              return;
            }
            
-           const user = auth.currentUser;
            if (!user) {
              showStatus('Lütfen önce giriş yapın!', 'error');
              return;
@@ -1229,18 +1303,16 @@
              const detectedCountry = detectCountryFromCity(location);
              if (detectedCountry) {
                // Bu bir şehir, şehir yerlerini ekle
-               await addCityPlaces(user, location);
-               locationInput.value = '';
-               return;
-             }
-             
-             // Şehir değilse, ülke kontrolü yap
-             const countryData = await checkIfCountryExists(location);
-             if (countryData) {
-               await addCountryPlaces(user, countryData, location);
-               locationInput.value = '';
-               return;
-             }
+             await addCityPlaces(user, location);
+             return;
+           }
+           
+           // Şehir değilse, ülke kontrolü yap
+           const countryData = await checkIfCountryExists(location);
+           if (countryData) {
+             await addCountryPlaces(user, countryData, location);
+             return;
+           }
              
              // Ne şehir ne de ülke olarak tanınmıyorsa
              showStatus(`${location} şehir veya ülke olarak tanınmadı. Lütfen geçerli bir şehir veya ülke adı girin.`, 'error');
