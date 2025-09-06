@@ -590,6 +590,53 @@
         googleSignInBtn.addEventListener('click', handleGoogleSignIn);
         logoutBtn.addEventListener('click', handleSignOut);
         
+        // Şehir/Ülke önerileri için input event listener (sayfa yüklendiğinde hemen çalışır)
+        universalSearchBox.addEventListener('input', function() {
+          const inputValue = this.value.toLowerCase();
+          const locationSuggestions = document.getElementById('locationSuggestions');
+          
+          if (inputValue.length < 2) {
+            locationSuggestions.innerHTML = '';
+            return;
+          }
+          
+          // Şehir ve ülke önerileri listesi
+          const suggestions = [
+            // Popüler şehirler
+            'Aachen', 'Berlin', 'München', 'Hamburg', 'Köln', 'Frankfurt', 'Stuttgart', 'Düsseldorf',
+            'Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Bordeaux', 'Lille', 'Strasbourg',
+            'Roma', 'Milano', 'Napoli', 'Torino', 'Venezia', 'Firenze', 'Bologna', 'Palermo',
+            'Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Bilbao', 'Málaga', 'Zaragoza', 'Murcia',
+            'London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Glasgow', 'Edinburgh', 'Bristol',
+            'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego',
+            'Tokyo', 'Osaka', 'Kyoto', 'Yokohama', 'Nagoya', 'Sapporo', 'Fukuoka', 'Kobe',
+            'Istanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep',
+            // Ülkeler
+            'Germany', 'Almanya', 'France', 'Fransa', 'Italy', 'İtalya', 'Spain', 'İspanya', 
+            'United Kingdom', 'İngiltere', 'United States', 'Amerika', 'Japan', 'Japonya', 'Turkey', 'Türkiye',
+            'Netherlands', 'Hollanda', 'Belgium', 'Belçika', 'Switzerland', 'İsviçre', 'Austria', 'Avusturya', 
+            'Portugal', 'Portekiz', 'Greece', 'Yunanistan', 'Poland', 'Polonya',
+            'Czech Republic', 'Çek Cumhuriyeti', 'Hungary', 'Macaristan', 'Romania', 'Romanya', 
+            'Bulgaria', 'Bulgaristan', 'Croatia', 'Hırvatistan', 'Slovakia', 'Slovakya', 'Slovenia', 'Slovenya',
+            'Estonia', 'Estonya', 'Latvia', 'Letonya', 'Lithuania', 'Litvanya', 'Canada', 'Kanada', 
+            'Australia', 'Avustralya', 'South Korea', 'Güney Kore', 'China', 'Çin', 'India', 'Hindistan',
+            'Brazil', 'Brezilya', 'Russia', 'Rusya', 'Mexico', 'Meksika', 'Argentina', 'Arjantin'
+          ];
+          
+          // Filtreleme
+          const filteredSuggestions = suggestions.filter(suggestion => 
+            suggestion.toLowerCase().includes(inputValue)
+          ).slice(0, 10); // İlk 10 öneriyi göster
+          
+          // Datalist'i güncelle
+          locationSuggestions.innerHTML = '';
+          filteredSuggestions.forEach(suggestion => {
+            const option = document.createElement('option');
+            option.value = suggestion;
+            locationSuggestions.appendChild(option);
+          });
+        });
+        
         // Awesomplete ile öneri getir
         const awesomplete = new Awesomplete(universalSearchBox, {
           minChars: 2,
@@ -1229,53 +1276,6 @@
           }
 
           placesTableContainer.style.display = '';
-          
-          // Şehir/Ülke önerileri için input event listener
-          universalSearchBox.addEventListener('input', function() {
-            const inputValue = this.value.toLowerCase();
-            const locationSuggestions = document.getElementById('locationSuggestions');
-            
-            if (inputValue.length < 2) {
-              locationSuggestions.innerHTML = '';
-              return;
-            }
-            
-            // Şehir ve ülke önerileri listesi
-            const suggestions = [
-              // Popüler şehirler
-              'Aachen', 'Berlin', 'München', 'Hamburg', 'Köln', 'Frankfurt', 'Stuttgart', 'Düsseldorf',
-              'Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Bordeaux', 'Lille', 'Strasbourg',
-              'Roma', 'Milano', 'Napoli', 'Torino', 'Venezia', 'Firenze', 'Bologna', 'Palermo',
-              'Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Bilbao', 'Málaga', 'Zaragoza', 'Murcia',
-              'London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Glasgow', 'Edinburgh', 'Bristol',
-              'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego',
-              'Tokyo', 'Osaka', 'Kyoto', 'Yokohama', 'Nagoya', 'Sapporo', 'Fukuoka', 'Kobe',
-              'Istanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep',
-              // Ülkeler
-              'Germany', 'Almanya', 'France', 'Fransa', 'Italy', 'İtalya', 'Spain', 'İspanya', 
-              'United Kingdom', 'İngiltere', 'United States', 'Amerika', 'Japan', 'Japonya', 'Turkey', 'Türkiye',
-              'Netherlands', 'Hollanda', 'Belgium', 'Belçika', 'Switzerland', 'İsviçre', 'Austria', 'Avusturya', 
-              'Portugal', 'Portekiz', 'Greece', 'Yunanistan', 'Poland', 'Polonya',
-              'Czech Republic', 'Çek Cumhuriyeti', 'Hungary', 'Macaristan', 'Romania', 'Romanya', 
-              'Bulgaria', 'Bulgaristan', 'Croatia', 'Hırvatistan', 'Slovakia', 'Slovakya', 'Slovenia', 'Slovenya',
-              'Estonia', 'Estonya', 'Latvia', 'Letonya', 'Lithuania', 'Litvanya', 'Canada', 'Kanada', 
-              'Australia', 'Avustralya', 'South Korea', 'Güney Kore', 'China', 'Çin', 'India', 'Hindistan',
-              'Brazil', 'Brezilya', 'Russia', 'Rusya', 'Mexico', 'Meksika', 'Argentina', 'Arjantin'
-            ];
-            
-            // Filtreleme
-            const filteredSuggestions = suggestions.filter(suggestion => 
-              suggestion.toLowerCase().includes(inputValue)
-            ).slice(0, 10); // İlk 10 öneriyi göster
-            
-            // Datalist'i güncelle
-            locationSuggestions.innerHTML = '';
-            filteredSuggestions.forEach(suggestion => {
-              const option = document.createElement('option');
-              option.value = suggestion;
-              locationSuggestions.appendChild(option);
-            });
-          });
         }
 
         // Şehir/Ülke için turistik yerler ekleme fonksiyonu
