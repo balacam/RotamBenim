@@ -499,10 +499,23 @@
 
         // Update UI based on auth state
         function updateUI(user) {
+            const placesTableContainer = document.getElementById('placesTableContainer');
+            const preLoginLanguage = document.getElementById('preLoginLanguage');
+            
             if (user) {
                 // User is signed in
                 googleSignInBtn.style.display = 'none';
                 userInfo.style.display = 'block';
+                
+                // Dil seçiciyi gizle
+                if (preLoginLanguage) {
+                    preLoginLanguage.style.display = 'none';
+                }
+                
+                // Ana içeriği göster
+                if (placesTableContainer) {
+                    placesTableContainer.style.display = 'block';
+                }
                 
                 userName.textContent = user.displayName || 'Kullanıcı';
                 userEmail.textContent = user.email || '';
@@ -518,6 +531,16 @@
                 googleSignInBtn.style.display = 'flex';
                 userInfo.style.display = 'none';
                 googleSignInBtn.disabled = false;
+                
+                // Dil seçiciyi göster
+                if (preLoginLanguage) {
+                    preLoginLanguage.style.display = 'block';
+                }
+                
+                // Ana içeriği gizle
+                if (placesTableContainer) {
+                    placesTableContainer.style.display = 'none';
+                }
             }
         }
 
