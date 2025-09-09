@@ -1379,7 +1379,7 @@
              showStatus(`${countryName} için turistik yerler araştırılıyor...`, 'info');
              
              // Foursquare API'den ülke için turistik yerler çek
-             const foursquarePlaces = await getFoursquarePlaces(countryName);
+             const foursquarePlaces = await getOpenTripMapPlaces(countryName);
              
              if (foursquarePlaces && foursquarePlaces.length >= 10) {
                return {
@@ -1603,7 +1603,7 @@
              // Önce Foursquare API'den dinamik veri çek
              showStatus(`${cityName} için Foursquare'den turistik yerler aranıyor...`, 'info');
              
-             const foursquarePlaces = await getFoursquarePlaces(cityName);
+             const foursquarePlaces = await getOpenTripMapPlaces(cityName);
              
              if (foursquarePlaces && foursquarePlaces.length > 0) {
                // Foursquare'den gelen verileri kullan
@@ -1706,7 +1706,125 @@
            }
          }
          
-         // Foursquare API'den turistik yerler çek
+         // OpenTripMap API'den turistik yerler çek
+         async function getOpenTripMapPlaces(cityName) {
+           try {
+             console.log(`OpenTripMap API çağrısı başlatılıyor: ${cityName}`);
+             
+             // Önce şehrin koordinatlarını al
+             const geonameUrl = `https://api.opentripmap.com/0.1/en/places/geoname?name=${encodeURIComponent(cityName)}&apikey=5ae2e3f221c38a28845f05b65ba166329393551235361ab9b66e2889`;
+             console.log('OpenTripMap Geoname URL:', geonameUrl);
+             
+             const geoResponse = await fetch(geonameUrl);
+             
+             if (!geoResponse.ok) {
+               console.error('OpenTripMap Geoname API hatası:', geoResponse.status);
+               return null;
+             }
+             
+             const geoData = await geoResponse.json();
+             console.log('OpenTripMap Geoname response:', geoData);
+             
+             if (!geoData.lat || !geoData.lon) {
+               console.error('Şehir koordinatları bulunamadı');
+               return null;
+             }
+             
+             // Şehir etrafındaki turistik yerleri al
+             const placesUrl = `https://api.opentripmap.com/0.1/en/places/radius?radius=50000&lat=${geoData.lat}&lon=${geoData.lon}&kinds=tourist_facilities,museums,theatres,architecture,historic,monuments,cultural,natural,religion,sport,amusements&limit=50&rate=2&apikey=5ae2e3f221c38a28845f05b65ba166329393551235361ab9b66e2889`;
+             console.log('OpenTripMap Places URL:', placesUrl);
+             
+             const placesResponse = await fetch(placesUrl);
+             
+             if (!placesResponse.ok) {
+               console.error('OpenTripMap Places API hatası:', placesResponse.status);
+               return null;
+             }
+             
+             const placesData = await placesResponse.json();
+             console.log('OpenTripMap Places response:', placesData);
+             
+             if (placesData && placesData.length > 0) {
+               console.log(`OpenTripMap'den ${placesData.length} yer bulundu`);
+               
+               // Her yer için detay bilgilerini al
+               const detailedPlaces = [];
+               
+               for (let i = 0; i < Math.min(placesData.length, 20); i++) {
+                 const place = placesData[i];
+                 
+                 try {
+                   // Detay bilgilerini al
+                   const detailUrl = `https://api.opentripmap.com/0.1/en/places/xid/${place.xid}?apikey=5ae2e3f221c38a28845f05b65ba166329393551235361ab9b66e2889`;
+                   const detailResponse = await fetch(detailUrl);
+                   
+                   if (detailResponse.ok) {
+                     const detailData = await detailResponse.json();
+                     
+                     // Sadece ismi olan ve açıklaması bulunan yerleri ekle
+                     if (detailData.name && (detailData.wikipedia_extracts?.text || detailData.info?.descr)) {
+                       detailedPlaces.push({
+                         name: detailData.name,
+                         city: cityName,
+                         country: geoData.country || 'Bilinmeyen Ülke',
+                         category: translateOpenTripMapCategory(detailData.kinds) || 'Turistik Yer',
+                         description: detailData.wikipedia_extracts?.text || detailData.info?.descr || `${detailData.name} hakkında detaylı bilgi.`,
+                         visited: false,
+                         createdAt: new Date(),
+                         source: 'opentripmap',
+                         xid: detailData.xid,
+                         address: detailData.address ? `${detailData.address.city || ''} ${detailData.address.state || ''} ${detailData.address.country || ''}`.trim() : '',
+                         rating: detailData.rate ? parseInt(detailData.rate) : null,
+                         image: detailData.preview?.source || null,
+                         wikipedia: detailData.wikipedia || null,
+                         coordinates: {
+                           lat: detailData.point?.lat || place.geometry?.coordinates?.[1],
+                           lon: detailData.point?.lon || place.geometry?.coordinates?.[0]
+                         }
+                       });
+                     }
+                   }
+                   
+                   // API rate limit için kısa bekleme
+                   await new Promise(resolve => setTimeout(resolve, 100));
+                 } catch (detailError) {
+                   console.error('Detay bilgisi alınırken hata:', detailError);
+                 }
+               }
+               
+               console.log(`OpenTripMap'den ${detailedPlaces.length} detaylı yer işlendi`);
+               return detailedPlaces;
+             } else {
+               console.log('OpenTripMap API\'den sonuç döndürülmedi veya boş');
+             }
+             
+             return null;
+           } catch (error) {
+             console.error('OpenTripMap API çağrısı hatası:', error);
+             return null;
+           }
+         }
+         
+         // OpenTripMap kategori çevirisi
+         function translateOpenTripMapCategory(kinds) {
+           if (!kinds) return 'Turistik Yer';
+           
+           const kindsList = kinds.toLowerCase();
+           
+           if (kindsList.includes('museum')) return 'Müze';
+           if (kindsList.includes('church') || kindsList.includes('religion')) return 'Dini Yapı';
+           if (kindsList.includes('monument') || kindsList.includes('historic')) return 'Tarihi Yapı';
+           if (kindsList.includes('architecture')) return 'Mimari Yapı';
+           if (kindsList.includes('theatre') || kindsList.includes('cultural')) return 'Kültürel Mekan';
+           if (kindsList.includes('natural') || kindsList.includes('park')) return 'Doğal Alan';
+           if (kindsList.includes('sport')) return 'Spor Tesisi';
+           if (kindsList.includes('amusement')) return 'Eğlence Merkezi';
+           if (kindsList.includes('tourist')) return 'Turistik Tesis';
+           
+           return 'Turistik Yer';
+         }
+         
+         // Foursquare API'den turistik yerler çek (yedek olarak)
          async function getFoursquarePlaces(cityName) {
            try {
              console.log(`Foursquare API çağrısı başlatılıyor: ${cityName}`);
