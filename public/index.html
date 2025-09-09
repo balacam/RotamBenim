@@ -250,8 +250,8 @@
             <div style="margin-bottom: 20px; text-align: center;">
                 <label for="preLoginLanguage" style="display: block; margin-bottom: 8px; color: #626976; font-size: 14px;">Dil / Language:</label>
                 <select id="preLoginLanguage" style="min-width: 120px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; background: white; font-size: 14px;">
-                    <option value="tr">🇹🇷 Türkçe</option>
-                    <option value="en">🇺🇸 English</option>
+                    <option value="tr">🇹🇷</option>
+                    <option value="en">🇺🇸</option>
                 </select>
             </div>
             
@@ -507,16 +507,6 @@
                 googleSignInBtn.style.display = 'none';
                 userInfo.style.display = 'block';
                 
-                // Dil seçiciyi gizle
-                if (preLoginLanguage) {
-                    preLoginLanguage.style.display = 'none';
-                }
-                
-                // Ana içeriği göster
-                if (placesTableContainer) {
-                    placesTableContainer.style.display = 'block';
-                }
-                
                 userName.textContent = user.displayName || 'Kullanıcı';
                 userEmail.textContent = user.email || '';
                 
@@ -531,16 +521,6 @@
                 googleSignInBtn.style.display = 'flex';
                 userInfo.style.display = 'none';
                 googleSignInBtn.disabled = false;
-                
-                // Dil seçiciyi göster
-                if (preLoginLanguage) {
-                    preLoginLanguage.style.display = 'block';
-                }
-                
-                // Ana içeriği gizle
-                if (placesTableContainer) {
-                    placesTableContainer.style.display = 'none';
-                }
             }
         }
 
