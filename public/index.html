@@ -663,7 +663,8 @@
         let lastSuggestions = [];
         universalSearchBox.addEventListener('input', async () => {
           const query = universalSearchBox.value.trim();
-          if (!query) {
+          console.log('Search query:', query); // Debug log
+          if (!query || query.length < 2) {
             awesomplete.list = [];
             lastSuggestions = [];
             return;
@@ -708,8 +709,14 @@
           let nominatimResults = [];
           try {
             const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=10&accept-language=tr,en`;
-            const nominatimResp = await fetch(nominatimUrl);
+            console.log('Nominatim URL:', nominatimUrl); // Debug log
+            const nominatimResp = await fetch(nominatimUrl, {
+              headers: {
+                'User-Agent': 'RotamBenim/1.0 (https://github.com/balacam/RotamBenim)'
+              }
+            });
             const nominatimData = await nominatimResp.json();
+            console.log('Nominatim response:', nominatimData); // Debug log
             
             if (nominatimData && nominatimData.length > 0) {
               // Kişi isimlerini filtrelemek için negatif anahtar kelimeler
@@ -781,6 +788,7 @@
           const allResults = [...popularResults, ...wikiResults, ...nominatimResults].filter((v, i, a) =>
             a.findIndex(t => t.value === v.value) === i
           );
+          console.log('All results:', allResults); // Debug log
           awesomplete.list = allResults;
           lastSuggestions = allResults;
         });
