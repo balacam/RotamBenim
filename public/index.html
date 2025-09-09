@@ -368,7 +368,7 @@
         const preLoginLanguage = document.getElementById('preLoginLanguage');
         const loginButtonText = document.getElementById('loginButtonText');
         let suggestionResults = [];
-        const GEONAMES_USERNAME = "b.alacam";
+
         
         // Dil ayarları
         let currentLanguage = 'tr';
@@ -704,33 +704,49 @@
               }));
             }
           } catch {}
-          // Geonames'den çek
-          let geoResults = [];
+          // Nominatim'den çek
+          let nominatimResults = [];
           try {
-            // Turistik yerler için feature code filtresi ekle
-            // A (ülke, eyalet, bölge), P (şehir, köy), L (parklar, alanlar), S (spot, bina, çiftlik), T (dağ, tepe, kaya), H (su kütlesi), V (orman, heath)
-            const featureCodes = 'A.ADM1,A.ADM2,A.ADM3,P.PPL,P.PPLA,P.PPLC,L.PRK,L.LCTY,S.BLDG,S.HSE,S.HTL,S.MNMT,S.MSTY,S.OPRA,S.SQR,T.MT,T.HLL,T.VLC,H.LK,H.STM,H.SPNG,H.WTRF,V.FRST';
-            const geoUrl = `https://secure.geonames.org/searchJSON?q=${encodeURIComponent(query)}&featureCode=${featureCodes}&maxRows=10&username=${GEONAMES_USERNAME}`;
-            const geoResp = await fetch(geoUrl);
-            const geoData = await geoResp.json();
-            if (geoData.geonames) {
+            const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=10&accept-language=tr,en`;
+            const nominatimResp = await fetch(nominatimUrl);
+            const nominatimData = await nominatimResp.json();
+            
+            if (nominatimData && nominatimData.length > 0) {
               // Kişi isimlerini filtrelemek için negatif anahtar kelimeler
               const negativeKeywords = [
                 "author", "writer", "novelist", "poet", "politician", "actor", "actress", "director", "producer", "singer", "musician", "composer", "artist", "painter", "sculptor", "philosopher", "scientist", "inventor", "entrepreneur", "businessman", "businesswoman", "athlete", "player"
               ];
               
-              geoResults = geoData.geonames
-                .filter(g => {
+              nominatimResults = nominatimData
+                .filter(item => {
                   // Kişi isimlerini filtrele
-                  const text = (g.name + ' ' + (g.fcodeName || '')).toLowerCase();
+                  const text = (item.display_name || '').toLowerCase();
                   return !negativeKeywords.some(kw => text.includes(kw));
                 })
-                .map(g => ({
-                  label: g.name,
-                  value: g.name,
-                  description: `${g.countryName || ''} ${g.fcodeName || ''}`,
-                  source: 'geonames'
-                }));
+                .map(item => {
+                  const address = item.address || {};
+                  const country = address.country || '';
+                  const state = address.state || address.region || '';
+                  const city = address.city || address.town || address.village || '';
+                  
+                  let description = '';
+                  if (city && country) {
+                    description = `${city}, ${country}`;
+                  } else if (state && country) {
+                    description = `${state}, ${country}`;
+                  } else if (country) {
+                    description = country;
+                  }
+                  
+                  return {
+                    label: item.name || item.display_name.split(',')[0],
+                    value: item.name || item.display_name.split(',')[0],
+                    description: description,
+                    source: 'nominatim',
+                    lat: parseFloat(item.lat),
+                    lon: parseFloat(item.lon)
+                  };
+                });
             }
           } catch {}
           // Popüler yerlerden arama yap
@@ -762,7 +778,7 @@
           } catch {}
           
           // Sonuçları birleştir ve sırala (popüler yerler önce gelsin)
-          const allResults = [...popularResults, ...wikiResults, ...geoResults].filter((v, i, a) =>
+          const allResults = [...popularResults, ...wikiResults, ...nominatimResults].filter((v, i, a) =>
             a.findIndex(t => t.value === v.value) === i
           );
           awesomplete.list = allResults;
