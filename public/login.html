@@ -143,28 +143,34 @@ const googleSignInBtn = document.getElementById('googleSignIn');
 // Handle Google Sign In
 async function signInWithGoogle() {
     try {
+        console.log('Google Sign In başlatılıyor...');
         googleSignInBtn.disabled = true;
         googleSignInBtn.innerHTML = 'Giriş yapılıyor...';
         
         const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
+        console.log('Provider oluşturuldu:', provider);
         
+        const result = await signInWithPopup(auth, provider);
         console.log('Giriş başarılı:', result.user);
+        
         alert('Hoş geldiniz, ' + result.user.displayName + '!');
         
         // Ana sayfaya yönlendir
+        console.log('Index.html sayfasına yönlendiriliyor...');
         window.location.href = '/index.html';
         
     } catch (error) {
-        console.error('Giriş hatası:', error);
+        console.error('Giriş hatası detayı:', error);
+        console.error('Hata kodu:', error.code);
+        console.error('Hata mesajı:', error.message);
         
-        let errorMessage = 'Giriş yapılırken bir hata oluştu.';
+        let errorMessage = 'Giriş yapılırken bir hata oluştu: ' + error.code;
         if (error.code === 'auth/popup-closed-by-user') {
             errorMessage = 'Giriş iptal edildi.';
         } else if (error.code === 'auth/network-request-failed') {
             errorMessage = 'Ağ hatası. İnternet bağlantınızı kontrol edin.';
         } else if (error.code === 'auth/unauthorized-domain') {
-            errorMessage = 'Bu domain için giriş yetkisi yok.';
+            errorMessage = 'Bu domain (localhost:8000) için giriş yetkisi yok. Firebase Console\'da authorized domains listesine localhost ekleyin.';
         }
         
         alert(errorMessage);
