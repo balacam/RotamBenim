@@ -157,9 +157,11 @@ async function signInWithGoogle() {
         
         // Ana sayfaya yönlendir - Firebase Auth'un tamamlanması için kısa bir bekleme
         console.log('Index.html sayfasına yönlendiriliyor...');
+        console.log('Mevcut URL:', window.location.href);
         setTimeout(() => {
-            window.location.href = '/index.html';
-        }, 1000);
+            console.log('Yönlendirme başlatılıyor...');
+            window.location.replace('/index.html');
+        }, 2000);
         
     } catch (error) {
         console.error('Giriş hatası detayı:', error);
