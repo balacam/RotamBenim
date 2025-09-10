@@ -26,12 +26,22 @@
 <div class="absolute top-6 right-6">
 <div class="relative inline-block text-left">
 <div>
-<button aria-expanded="true" aria-haspopup="true" class="inline-flex w-full justify-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" id="menu-button" type="button">
-                  English
+<button aria-expanded="false" aria-haspopup="true" class="inline-flex w-full justify-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" id="menu-button" type="button" onclick="toggleLanguageMenu()">
+                  <span id="current-language">English</span>
                   <svg aria-hidden="true" class="-mr-1 h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
 <path clip-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" fill-rule="evenodd"></path>
 </svg>
 </button>
+</div>
+<div class="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-700" id="language-menu" style="display: none;">
+<div class="py-1" role="none">
+<button class="text-gray-700 dark:text-gray-300 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left" onclick="changeLanguage('en')" role="menuitem">
+🇺🇸 English
+</button>
+<button class="text-gray-700 dark:text-gray-300 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left" onclick="changeLanguage('tr')" role="menuitem">
+🇹🇷 Türkçe
+</button>
+</div>
 </div>
 </div>
 </div>
@@ -45,7 +55,7 @@ public
 </div>
 <h2 class="text-[#111318] text-2xl font-bold leading-tight tracking-[-0.015em]">RotamBenim</h2>
 </div>
-<h2 class="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">Sign in to your account</h2>
+<h2 class="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white" data-translate="signin-title">Sign in to your account</h2>
 </div>
 <div class="space-y-6">
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -70,33 +80,33 @@ public
 </div>
 <div class="flex items-center justify-center">
 <div class="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
-<span class="px-4 text-sm text-gray-500 bg-white dark:bg-gray-900 dark:text-gray-400">Or continue with</span>
+<span class="px-4 text-sm text-gray-500 bg-white dark:bg-gray-900 dark:text-gray-400" data-translate="or-continue">Or continue with</span>
 <div class="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
 </div>
 <form action="#" class="space-y-6" method="POST">
 <div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="email"> Email address </label>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="email" data-translate="email-label"> Email address </label>
 <div class="mt-1">
-<input autocomplete="email" class="form-input block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" id="email" name="email" placeholder="you@example.com" required="" type="email"/>
+<input autocomplete="email" class="form-input block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" id="email" name="email" data-translate-placeholder="email-placeholder" placeholder="you@example.com" required="" type="email"/>
 </div>
 </div>
 <div>
-<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="password"> Password </label>
+<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="password" data-translate="password-label"> Password </label>
 <div class="mt-1">
-<input autocomplete="current-password" class="form-input block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+<input autocomplete="current-password" class="form-input block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" id="password" name="password" data-translate-placeholder="password-placeholder" placeholder="••••••••" required="" type="password"/>
 </div>
 </div>
 <div class="flex items-center justify-between">
 <div class="flex items-center">
 <input class="h-4 w-4 text-[var(--primary-color)] focus:ring-[var(--primary-color)] border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600" id="remember-me" name="remember-me" type="checkbox"/>
-<label class="ml-2 block text-sm text-gray-900 dark:text-gray-300" for="remember-me"> Remember me </label>
+<label class="ml-2 block text-sm text-gray-900 dark:text-gray-300" for="remember-me" data-translate="remember-me"> Remember me </label>
 </div>
 <div class="text-sm">
-<a class="font-medium text-[var(--primary-color)] hover:text-blue-500" href="#"> Forgot your password? </a>
+<a class="font-medium text-[var(--primary-color)] hover:text-blue-500" href="#" data-translate="forgot-password"> Forgot your password? </a>
 </div>
 </div>
 <div>
-<button class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-color)] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" type="submit">
+<button class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-color)] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" type="submit" data-translate="signin-button">
                     Sign in
                   </button>
 </div>
@@ -108,14 +118,108 @@ public
 <img alt="Hot air balloons in Cappadocia at dusk" class="absolute inset-0 h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDULMp54eOIsKZm7FerXiZb1owxIFYl5G0hOlaIW916IgPi5FpwhCVOwOyTjKODENTYoNbVV95gzhY0dvMawwWms2TB5TzlNCSLDyD19abycYqhIJCxoAk3is5yD6F_QJRdd5XDcEWHlXRVpgr3oVfct2pqFZYRUVxwng4g498iVV4roYJPz3HtdjG9q6JAy4Vnr2qJI0zhpaxCmTAe4U0mnzyeyVYu2Htq70ZBERNkWH3BqW3A1U1yLPNeLhy2Qwnfo0VqZVHjL6E"/>
 <div class="absolute inset-0 bg-black opacity-50"></div>
 <div class="relative z-10 p-12 text-white max-w-lg text-center">
-<h1 class="text-5xl font-bold">discover your next adventure</h1>
-<p class="mt-4 text-lg">"The world is a book and those who do not travel read only one page." - Saint Augustine</p>
+<h1 class="text-5xl font-bold" data-translate="hero-title">discover your next adventure</h1>
+<p class="mt-4 text-lg" data-translate="hero-quote">"The world is a book and those who do not travel read only one page." - Saint Augustine</p>
 </div>
 </div>
 </div>
 </div>
 
 <script type="module">
+// Çok dilli sistem
+const translations = {
+    en: {
+        'signin-title': 'Sign in to your account',
+        'or-continue': 'Or continue with',
+        'email-label': 'Email address',
+        'email-placeholder': 'you@example.com',
+        'password-label': 'Password',
+        'password-placeholder': '••••••••',
+        'remember-me': 'Remember me',
+        'forgot-password': 'Forgot your password?',
+        'signin-button': 'Sign in',
+        'hero-title': 'discover your next adventure',
+        'hero-quote': '"The world is a book and those who do not travel read only one page." - Saint Augustine'
+    },
+    tr: {
+        'signin-title': 'Hesabınıza giriş yapın',
+        'or-continue': 'Veya şununla devam edin',
+        'email-label': 'E-posta adresi',
+        'email-placeholder': 'ornek@email.com',
+        'password-label': 'Şifre',
+        'password-placeholder': '••••••••',
+        'remember-me': 'Beni hatırla',
+        'forgot-password': 'Şifrenizi mi unuttunuz?',
+        'signin-button': 'Giriş Yap',
+        'hero-title': 'bir sonraki maceranı keşfet',
+        'hero-quote': '"Dünya bir kitaptır ve seyahat etmeyenler sadece bir sayfa okur." - Aziz Augustine'
+    }
+};
+
+// Dil değiştirme fonksiyonları
+function toggleLanguageMenu() {
+    const menu = document.getElementById('language-menu');
+    const button = document.getElementById('menu-button');
+    const isVisible = menu.style.display !== 'none';
+    
+    menu.style.display = isVisible ? 'none' : 'block';
+    button.setAttribute('aria-expanded', !isVisible);
+}
+
+function changeLanguage(lang) {
+    // Dil seçimini kaydet
+    localStorage.setItem('selectedLanguage', lang);
+    
+    // Menüyü kapat
+    document.getElementById('language-menu').style.display = 'none';
+    document.getElementById('menu-button').setAttribute('aria-expanded', 'false');
+    
+    // Dil butonunu güncelle
+    const currentLangSpan = document.getElementById('current-language');
+    currentLangSpan.textContent = lang === 'en' ? 'English' : 'Türkçe';
+    
+    // Sayfayı çevir
+    translatePage(lang);
+}
+
+function translatePage(lang) {
+    const elements = document.querySelectorAll('[data-translate]');
+    elements.forEach(element => {
+        const key = element.getAttribute('data-translate');
+        if (translations[lang] && translations[lang][key]) {
+            element.textContent = translations[lang][key];
+        }
+    });
+    
+    // Placeholder'ları çevir
+    const placeholderElements = document.querySelectorAll('[data-translate-placeholder]');
+    placeholderElements.forEach(element => {
+        const key = element.getAttribute('data-translate-placeholder');
+        if (translations[lang] && translations[lang][key]) {
+            element.placeholder = translations[lang][key];
+        }
+    });
+}
+
+// Sayfa yüklendiğinde son seçilen dili uygula
+function initializeLanguage() {
+    const savedLang = localStorage.getItem('selectedLanguage') || 'en';
+    const currentLangSpan = document.getElementById('current-language');
+    currentLangSpan.textContent = savedLang === 'en' ? 'English' : 'Türkçe';
+    translatePage(savedLang);
+}
+
+// Menü dışına tıklandığında menüyü kapat
+document.addEventListener('click', function(event) {
+    const menu = document.getElementById('language-menu');
+    const button = document.getElementById('menu-button');
+    
+    if (!button.contains(event.target) && !menu.contains(event.target)) {
+        menu.style.display = 'none';
+        button.setAttribute('aria-expanded', 'false');
+    }
+});
+
 // Firebase imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -183,8 +287,13 @@ async function signInWithGoogle() {
     }
 }
 
-// Make function global
+// Make functions global
 window.signInWithGoogle = signInWithGoogle;
+window.toggleLanguageMenu = toggleLanguageMenu;
+window.changeLanguage = changeLanguage;
+
+// Sayfa yüklendiğinde dili başlat
+document.addEventListener('DOMContentLoaded', initializeLanguage);
 </script>
 
 </body></html>
