@@ -155,9 +155,11 @@ async function signInWithGoogle() {
         
         alert('Hoş geldiniz, ' + result.user.displayName + '!');
         
-        // Ana sayfaya yönlendir
+        // Ana sayfaya yönlendir - Firebase Auth'un tamamlanması için kısa bir bekleme
         console.log('Index.html sayfasına yönlendiriliyor...');
-        window.location.href = '/index.html';
+        setTimeout(() => {
+            window.location.href = '/index.html';
+        }, 1000);
         
     } catch (error) {
         console.error('Giriş hatası detayı:', error);
