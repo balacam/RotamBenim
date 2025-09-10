@@ -137,7 +137,8 @@ const translations = {
         'password-placeholder': '••••••••',
         'remember-me': 'Remember me',
         'forgot-password': 'Forgot your password?',
-        'signin-button': 'Sign in'
+        'signin-button': 'Sign in',
+        'signing-in': 'Signing in...'
     },
     tr: {
         'signin-title': 'Hesabınıza giriş yapın',
@@ -148,7 +149,8 @@ const translations = {
         'password-placeholder': '••••••••',
         'remember-me': 'Beni hatırla',
         'forgot-password': 'Şifrenizi mi unuttunuz?',
-        'signin-button': 'Giriş Yap'
+        'signin-button': 'Giriş Yap',
+        'signing-in': 'Giriş yapılıyor...'
     }
 };
 
@@ -245,7 +247,11 @@ async function signInWithGoogle() {
     try {
         console.log('Google Sign In başlatılıyor...');
         googleSignInBtn.disabled = true;
-        googleSignInBtn.innerHTML = 'Giriş yapılıyor...';
+        
+        // Mevcut dili al ve uygun metni göster
+        const currentLang = localStorage.getItem('selectedLanguage') || 'en';
+        const signingInText = translations[currentLang]['signing-in'];
+        googleSignInBtn.innerHTML = signingInText;
         
         const provider = new GoogleAuthProvider();
         console.log('Provider oluşturuldu:', provider);
@@ -253,15 +259,13 @@ async function signInWithGoogle() {
         const result = await signInWithPopup(auth, provider);
         console.log('Giriş başarılı:', result.user);
         
-        alert('Hoş geldiniz, ' + result.user.displayName + '!');
-        
-        // Ana sayfaya yönlendir - Firebase Auth'un tamamlanması için kısa bir bekleme
+        // Hoşgeldin mesajı kaldırıldı - direkt yönlendir
         console.log('Main.html sayfasına yönlendiriliyor...');
         console.log('Mevcut URL:', window.location.href);
         setTimeout(() => {
             console.log('Yönlendirme başlatılıyor...');
             window.location.replace('/main.html');
-        }, 2000);
+        }, 1000);
         
     } catch (error) {
         console.error('Giriş hatası detayı:', error);
