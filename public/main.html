@@ -522,10 +522,9 @@
                 }
                 
             } else {
-                // User is signed out
-                googleSignInBtn.style.display = 'flex';
-                userInfo.style.display = 'none';
-                googleSignInBtn.disabled = false;
+                // User is signed out - login sayfasına yönlendir
+                console.log('Kullanıcı çıkış yaptı, login sayfasına yönlendiriliyor...');
+                window.location.href = '/index.html';
             }
         }
 
