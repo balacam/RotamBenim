@@ -3918,11 +3918,25 @@
                      
                      // Eğer kullanıcı zaten giriş yapmışsa, hesabı bağla
                      if (auth.currentUser) {
-                         const result = await linkWithPopup(auth.currentUser, twitterProvider);
-                         console.log('X (Twitter) hesabı mevcut kullanıcıya bağlandı:', result.user);
-                         showStatus('X (Twitter) hesabınız mevcut hesabınıza başarıyla bağlandı!', 'success');
+                         console.log('Mevcut kullanıcı var, account linking deneniyor:', auth.currentUser.uid);
+                         try {
+                             const result = await linkWithPopup(auth.currentUser, twitterProvider);
+                             console.log('X (Twitter) hesabı mevcut kullanıcıya bağlandı:', result.user);
+                             showStatus('X (Twitter) hesabınız mevcut hesabınıza başarıyla bağlandı!', 'success');
+                         } catch (linkError) {
+                             console.log('Link hatası:', linkError.code, linkError.message);
+                             if (linkError.code === 'auth/account-exists-with-different-credential') {
+                                 showStatus('Bu Twitter hesabı zaten başka bir hesapla bağlı. Önce o hesaptan bağlantıyı kesin.', 'error');
+                             } else if (linkError.code === 'auth/provider-already-linked') {
+                                 showStatus('Twitter hesabınız zaten bu hesaba bağlı.', 'info');
+                                 toggle.classList.add('active');
+                             } else {
+                                 throw linkError; // Diğer hataları üst catch'e gönder
+                             }
+                         }
                      } else {
                          // Kullanıcı giriş yapmamışsa normal sign in yap
+                         console.log('Kullanıcı giriş yapmamış, normal sign in yapılıyor');
                          const result = await signInWithPopup(auth, twitterProvider);
                          console.log('X (Twitter) ile giriş başarılı:', result.user);
                          showStatus('X (Twitter) hesabınız başarıyla bağlandı!', 'success');
