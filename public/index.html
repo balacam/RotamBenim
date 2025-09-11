@@ -17,6 +17,10 @@
         'GRAD' 0,
         'opsz' 24
       }
+      /* Emoji bayrakların her platformda renkli görünmesi için özel font ailesi */
+      .emoji-flag {
+        font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", "EmojiOne Color", "Android Emoji", "Segoe UI Symbol", sans-serif;
+      }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900">
@@ -27,7 +31,7 @@
 <div class="relative inline-block text-left">
 <div>
 <button aria-expanded="false" aria-haspopup="true" class="inline-flex w-full justify-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" id="menu-button" type="button" onclick="toggleLanguageMenu()">
-                  <span id="current-language">English</span>
+                  <span id="current-language"><span class="emoji-flag mr-2">🇺🇸</span> English</span>
                   <svg aria-hidden="true" class="-mr-1 h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
 <path clip-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" fill-rule="evenodd"></path>
 </svg>
@@ -36,10 +40,10 @@
 <div class="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-700" id="language-menu" style="display: none;">
 <div class="py-1" role="none">
 <button class="text-gray-700 dark:text-gray-300 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left" onclick="changeLanguage('en')" role="menuitem">
-🇺🇸 English
+<span class="emoji-flag mr-2">🇺🇸</span> English
 </button>
 <button class="text-gray-700 dark:text-gray-300 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left" onclick="changeLanguage('tr')" role="menuitem">
-🇹🇷 Türkçe
+<span class="emoji-flag mr-2">🇹🇷</span> Türkçe
 </button>
 </div>
 </div>
@@ -123,7 +127,6 @@ public
 </div>
 </div>
 </div>
-</div>
 
 <script type="module">
 // Çok dilli sistem
@@ -174,7 +177,7 @@ function changeLanguage(lang) {
     
     // Dil butonunu güncelle
     const currentLangSpan = document.getElementById('current-language');
-    currentLangSpan.textContent = lang === 'en' ? 'English' : 'Türkçe';
+    currentLangSpan.innerHTML = lang === 'en' ? '<span class="emoji-flag mr-2">🇺🇸</span> English' : '<span class="emoji-flag mr-2">🇹🇷</span> Türkçe';
     
     // Sayfayı çevir
     translatePage(lang);
@@ -203,7 +206,7 @@ function translatePage(lang) {
 function initializeLanguage() {
     const savedLang = localStorage.getItem('selectedLanguage') || 'en';
     const currentLangSpan = document.getElementById('current-language');
-    currentLangSpan.textContent = savedLang === 'en' ? 'English' : 'Türkçe';
+    currentLangSpan.innerHTML = savedLang === 'en' ? '<span class="emoji-flag mr-2">🇺🇸</span> English' : '<span class="emoji-flag mr-2">🇹🇷</span> Türkçe';
     translatePage(savedLang);
 }
 
