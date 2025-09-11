@@ -526,7 +526,7 @@
     <script type="module">
         // Firebase imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, linkWithPopup, GoogleAuthProvider, TwitterAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
         import { getFirestore, collection, getDocs, addDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -658,6 +658,7 @@
         window.TwitterAuthProvider = TwitterAuthProvider;
         window.GoogleAuthProvider = GoogleAuthProvider;
         window.signInWithPopup = signInWithPopup;
+        window.linkWithPopup = linkWithPopup;
         window.auth = auth;
 
         // Handle Google Sign In
@@ -3914,12 +3915,21 @@
                      showStatus('X (Twitter) ile bağlanılıyor...', 'info');
                      
                      const twitterProvider = new TwitterAuthProvider();
-                     const result = await signInWithPopup(auth, twitterProvider);
+                     
+                     // Eğer kullanıcı zaten giriş yapmışsa, hesabı bağla
+                     if (auth.currentUser) {
+                         const result = await linkWithPopup(auth.currentUser, twitterProvider);
+                         console.log('X (Twitter) hesabı mevcut kullanıcıya bağlandı:', result.user);
+                         showStatus('X (Twitter) hesabınız mevcut hesabınıza başarıyla bağlandı!', 'success');
+                     } else {
+                         // Kullanıcı giriş yapmamışsa normal sign in yap
+                         const result = await signInWithPopup(auth, twitterProvider);
+                         console.log('X (Twitter) ile giriş başarılı:', result.user);
+                         showStatus('X (Twitter) hesabınız başarıyla bağlandı!', 'success');
+                     }
                     
                     // Başarılı bağlantı
                     toggle.classList.add('active');
-                    console.log('X (Twitter) bağlantısı başarılı:', result.user);
-                    showStatus('X (Twitter) hesabınız başarıyla bağlandı!', 'success');
                     
                 } else if (provider === 'facebook') {
                     showStatus('Facebook bağlantısı henüz aktif değil.', 'error');
