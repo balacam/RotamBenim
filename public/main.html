@@ -526,7 +526,7 @@
     <script type="module">
         // Firebase imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
         import { getFirestore, collection, getDocs, addDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -3887,20 +3887,54 @@
             modal.style.display = 'none';
         }
         
-        function toggleConnection(provider) {
+        async function toggleConnection(provider) {
             const event = window.event;
             const toggle = event.currentTarget;
             
-            // Toggle active class
-            toggle.classList.toggle('active');
-            
-            // Burada gerçek bağlantı işlemleri yapılabilir
-            console.log(`${provider} connection toggled:`, toggle.classList.contains('active'));
-            
-            // Örnek: Facebook veya Twitter bağlantısı için uyarı
-            if (provider === 'facebook' && toggle.classList.contains('active')) {
-                alert('Facebook bağlantısı henüz aktif değil.');
+            // Eğer toggle zaten aktifse, bağlantıyı kes
+            if (toggle.classList.contains('active')) {
                 toggle.classList.remove('active');
+                console.log(`${provider} bağlantısı kesildi`);
+                showStatus(`${provider.charAt(0).toUpperCase() + provider.slice(1)} bağlantısı kesildi.`, 'info');
+                return;
+            }
+            
+            // Yeni bağlantı kur
+            try {
+                if (provider === 'twitter') {
+                     showStatus('X (Twitter) ile bağlanılıyor...', 'info');
+                     
+                     const twitterProvider = new TwitterAuthProvider();
+                     const result = await signInWithPopup(auth, twitterProvider);
+                    
+                    // Başarılı bağlantı
+                    toggle.classList.add('active');
+                    console.log('X (Twitter) bağlantısı başarılı:', result.user);
+                    showStatus('X (Twitter) hesabınız başarıyla bağlandı!', 'success');
+                    
+                } else if (provider === 'facebook') {
+                    showStatus('Facebook bağlantısı henüz aktif değil.', 'error');
+                    
+                } else if (provider === 'google') {
+                    // Google zaten bağlı, hiçbir şey yapma
+                    toggle.classList.add('active');
+                    showStatus('Google hesabınız zaten bağlı.', 'info');
+                }
+                
+            } catch (error) {
+                console.error(`${provider} bağlantı hatası:`, error);
+                
+                let errorMessage = `${provider.charAt(0).toUpperCase() + provider.slice(1)} ile bağlantı kurulurken hata oluştu.`;
+                
+                if (error.code === 'auth/popup-closed-by-user') {
+                    errorMessage = 'Bağlantı işlemi iptal edildi.';
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    errorMessage = 'Bu domain için yetki yok. Firebase Console\'da domain ekleyin.';
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    errorMessage = `${provider.charAt(0).toUpperCase() + provider.slice(1)} girişi etkinleştirilmemiş.`;
+                }
+                
+                showStatus(errorMessage, 'error');
             }
         }
         
