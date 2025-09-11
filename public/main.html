@@ -653,6 +653,12 @@
         
         // Make showStatus globally accessible
         window.showStatus = showStatus;
+        
+        // Make Firebase auth providers globally accessible
+        window.TwitterAuthProvider = TwitterAuthProvider;
+        window.GoogleAuthProvider = GoogleAuthProvider;
+        window.signInWithPopup = signInWithPopup;
+        window.auth = auth;
 
         // Handle Google Sign In
         async function handleGoogleSignIn() {
