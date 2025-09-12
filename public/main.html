@@ -3932,6 +3932,8 @@
                                   toggle.classList.add('active');
                               } else if (linkError.code === 'auth/credential-already-in-use') {
                                   showStatus('Bu Twitter hesabı zaten kullanımda. Farklı bir Twitter hesabı deneyin veya mevcut bağlantıyı kesin.', 'error');
+                              } else if (linkError.code === 'auth/invalid-credential') {
+                                  showStatus('Twitter bağlantısında hata oluştu. Lütfen tekrar deneyin veya farklı bir hesap kullanın.', 'error');
                               } else {
                                   throw linkError; // Diğer hataları üst catch'e gönder
                               }
