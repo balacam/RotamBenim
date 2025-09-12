@@ -3924,16 +3924,18 @@
                              console.log('X (Twitter) hesabı mevcut kullanıcıya bağlandı:', result.user);
                              showStatus('X (Twitter) hesabınız mevcut hesabınıza başarıyla bağlandı!', 'success');
                          } catch (linkError) {
-                             console.log('Link hatası:', linkError.code, linkError.message);
-                             if (linkError.code === 'auth/account-exists-with-different-credential') {
-                                 showStatus('Bu Twitter hesabı zaten başka bir hesapla bağlı. Önce o hesaptan bağlantıyı kesin.', 'error');
-                             } else if (linkError.code === 'auth/provider-already-linked') {
-                                 showStatus('Twitter hesabınız zaten bu hesaba bağlı.', 'info');
-                                 toggle.classList.add('active');
-                             } else {
-                                 throw linkError; // Diğer hataları üst catch'e gönder
-                             }
-                         }
+                              console.log('Link hatası:', linkError.code, linkError.message);
+                              if (linkError.code === 'auth/account-exists-with-different-credential') {
+                                  showStatus('Bu Twitter hesabı zaten başka bir hesapla bağlı. Önce o hesaptan bağlantıyı kesin.', 'error');
+                              } else if (linkError.code === 'auth/provider-already-linked') {
+                                  showStatus('Twitter hesabınız zaten bu hesaba bağlı.', 'info');
+                                  toggle.classList.add('active');
+                              } else if (linkError.code === 'auth/credential-already-in-use') {
+                                  showStatus('Bu Twitter hesabı zaten kullanımda. Farklı bir Twitter hesabı deneyin veya mevcut bağlantıyı kesin.', 'error');
+                              } else {
+                                  throw linkError; // Diğer hataları üst catch'e gönder
+                              }
+                          }
                      } else {
                          // Kullanıcı giriş yapmamışsa normal sign in yap
                          console.log('Kullanıcı giriş yapmamış, normal sign in yapılıyor');
