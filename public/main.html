@@ -4193,8 +4193,9 @@
             try {
                 showStatus('Hesap siliniyor...', 'info');
                 
-                // Firestore fonksiyonlarını import et
+                // Firestore ve Auth fonksiyonlarını import et
                 const { doc, collection, getDocs, deleteDoc, getFirestore } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                const { deleteUser } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
                 const db = getFirestore();
                 
                 // Önce Firestore'daki kullanıcı verilerini sil
