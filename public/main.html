@@ -3904,10 +3904,22 @@
             console.log('Kullanıcı:', user.uid);
             console.log('Provider Data:', user.providerData);
             
-            // Tüm toggle'ları önce pasif yap
-            const twitterToggle = document.querySelector('.connection-item:nth-child(1) .toggle-switch');
-            const facebookToggle = document.querySelector('.connection-item:nth-child(2) .toggle-switch');
-            const googleToggle = document.querySelector('.connection-item:nth-child(3) .toggle-switch');
+            // Toggle'ları daha spesifik selector'larla bul
+            const connectionItems = document.querySelectorAll('.connection-item');
+            let twitterToggle, facebookToggle, googleToggle;
+            
+            connectionItems.forEach(item => {
+                const connectionName = item.querySelector('.connection-name').textContent;
+                const toggle = item.querySelector('.toggle-switch');
+                
+                if (connectionName.includes('Connect to X')) {
+                    twitterToggle = toggle;
+                } else if (connectionName.includes('Connect to Facebook')) {
+                    facebookToggle = toggle;
+                } else if (connectionName.includes('Connect to Google')) {
+                    googleToggle = toggle;
+                }
+            });
             
             // Toggle'ları temizle
             if (twitterToggle) twitterToggle.classList.remove('active');
@@ -3922,19 +3934,19 @@
                     case 'twitter.com':
                         if (twitterToggle) {
                             twitterToggle.classList.add('active');
-                            console.log('Twitter bağlantısı aktif');
+                            console.log('X (Twitter) bağlantısı aktif - toggle güncellendi');
                         }
                         break;
                     case 'facebook.com':
                         if (facebookToggle) {
                             facebookToggle.classList.add('active');
-                            console.log('Facebook bağlantısı aktif');
+                            console.log('Facebook bağlantısı aktif - toggle güncellendi');
                         }
                         break;
                     case 'google.com':
                         if (googleToggle) {
                             googleToggle.classList.add('active');
-                            console.log('Google bağlantısı aktif');
+                            console.log('Google bağlantısı aktif - toggle güncellendi');
                         }
                         break;
                 }
