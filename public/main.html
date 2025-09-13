@@ -3889,7 +3889,58 @@
                 modalUserName.textContent = userName.textContent;
             }
             
+            // Bağlantı durumlarını kontrol et ve toggle'ları güncelle
+            updateConnectionToggles();
+            
             modal.style.display = 'block';
+        }
+        
+        // Bağlantı durumlarını kontrol et ve toggle'ları güncelle
+        function updateConnectionToggles() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            console.log('=== Bağlantı Durumları Kontrol Ediliyor ===');
+            console.log('Kullanıcı:', user.uid);
+            console.log('Provider Data:', user.providerData);
+            
+            // Tüm toggle'ları önce pasif yap
+            const twitterToggle = document.querySelector('.connection-item:nth-child(1) .toggle-switch');
+            const facebookToggle = document.querySelector('.connection-item:nth-child(2) .toggle-switch');
+            const googleToggle = document.querySelector('.connection-item:nth-child(3) .toggle-switch');
+            
+            // Toggle'ları temizle
+            if (twitterToggle) twitterToggle.classList.remove('active');
+            if (facebookToggle) facebookToggle.classList.remove('active');
+            if (googleToggle) googleToggle.classList.remove('active');
+            
+            // Provider'ları kontrol et
+            user.providerData.forEach(provider => {
+                console.log('Provider ID:', provider.providerId);
+                
+                switch (provider.providerId) {
+                    case 'twitter.com':
+                        if (twitterToggle) {
+                            twitterToggle.classList.add('active');
+                            console.log('Twitter bağlantısı aktif');
+                        }
+                        break;
+                    case 'facebook.com':
+                        if (facebookToggle) {
+                            facebookToggle.classList.add('active');
+                            console.log('Facebook bağlantısı aktif');
+                        }
+                        break;
+                    case 'google.com':
+                        if (googleToggle) {
+                            googleToggle.classList.add('active');
+                            console.log('Google bağlantısı aktif');
+                        }
+                        break;
+                }
+            });
+            
+            console.log('=== Bağlantı Durumları Güncellendi ===');
         }
         
         function closeSettingsModal() {
@@ -3903,9 +3954,26 @@
             
             // Eğer toggle zaten aktifse, bağlantıyı kes
             if (toggle.classList.contains('active')) {
-                toggle.classList.remove('active');
-                console.log(`${provider} bağlantısı kesildi`);
-                showStatus(`${provider.charAt(0).toUpperCase() + provider.slice(1)} bağlantısı kesildi.`, 'info');
+                try {
+                    const user = auth.currentUser;
+                    if (user && provider === 'twitter') {
+                        // Twitter bağlantısını kes
+                        const { unlink } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+                        await unlink(user, 'twitter.com');
+                        console.log('Twitter bağlantısı kesildi');
+                        showStatus('X (Twitter) bağlantısı kesildi.', 'success');
+                    } else if (user && provider === 'facebook') {
+                        // Facebook bağlantısını kes
+                        const { unlink } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+                        await unlink(user, 'facebook.com');
+                        console.log('Facebook bağlantısı kesildi');
+                        showStatus('Facebook bağlantısı kesildi.', 'success');
+                    }
+                    toggle.classList.remove('active');
+                } catch (error) {
+                    console.error(`${provider} bağlantısı kesilirken hata:`, error);
+                    showStatus(`${provider.charAt(0).toUpperCase() + provider.slice(1)} bağlantısı kesilirken hata oluştu.`, 'error');
+                }
                 return;
             }
             
