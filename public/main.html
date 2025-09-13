@@ -608,7 +608,15 @@
 
         // Show status message
         function showStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('statusMessage');
+            // Modal açık mı kontrol et
+            const modal = document.getElementById('settingsModal');
+            const isModalOpen = modal && modal.style.display === 'block';
+            
+            // Modal açıksa modal içindeki status div'i kullan, değilse normal status div'i
+            const statusDiv = isModalOpen ? 
+                document.getElementById('modalStatusMessage') : 
+                document.getElementById('statusMessage');
+                
             if (!statusDiv) return;
             
             // Mesaj tipine göre stil belirle
@@ -629,22 +637,31 @@
                     break;
             }
             
+            // Modal içindeyse farklı stil, dışındaysa fixed positioning
+            const styleProps = isModalOpen ? 
+                `background-color: ${bgColor};
+                 color: ${textColor};
+                 padding: 10px 15px;
+                 border-radius: 5px;
+                 margin: 0 0 15px 0;
+                 border: 1px solid ${textColor}20;
+                 font-size: 14px;` :
+                `background-color: ${bgColor};
+                 color: ${textColor};
+                 padding: 10px 15px;
+                 border-radius: 5px;
+                 margin: 10px 0;
+                 border: 1px solid ${textColor}20;
+                 font-size: 14px;
+                 position: fixed;
+                 top: 20px;
+                 right: 20px;
+                 z-index: 10000;
+                 max-width: 400px;
+                 box-shadow: 0 4px 12px rgba(0,0,0,0.15);`;
+            
             statusDiv.innerHTML = `
-                <div style="
-                    background-color: ${bgColor};
-                    color: ${textColor};
-                    padding: 10px 15px;
-                    border-radius: 5px;
-                    margin: 10px 0;
-                    border: 1px solid ${textColor}20;
-                    font-size: 14px;
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    z-index: 10000;
-                    max-width: 400px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                ">
+                <div style="${styleProps}">
                     ${message}
                 </div>
             `;
@@ -3821,6 +3838,9 @@
                 <button class="close-btn" onclick="closeSettingsModal()">&times;</button>
             </div>
             <div class="settings-body">
+                <!-- Status Messages in Modal -->
+                <div id="modalStatusMessage" style="margin-bottom: 15px;"></div>
+                
                 <!-- Profile Section -->
                 <div class="profile-section">
                     <div class="profile-info">
