@@ -4205,26 +4205,42 @@
                 try {
                     console.log('Kullanıcı verilerini silme işlemi başlatılıyor:', user.uid);
                     
-                    // Kullanıcının tüm yerlerini sil
-                    const placesSnapshot = await getDocs(placesCollectionRef);
-                    console.log('Silinecek yer sayısı:', placesSnapshot.docs.length);
+                    // Önce dokümanın var olup olmadığını kontrol et
+                    const { getDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    const userDocSnapshot = await getDoc(userDocRef);
                     
-                    if (placesSnapshot.docs.length > 0) {
-                        const deletePromises = placesSnapshot.docs.map(docRef => {
-                            console.log('Siliniyor:', docRef.id);
-                            return deleteDoc(docRef.ref);
-                        });
-                        await Promise.all(deletePromises);
-                        console.log('Tüm yerler silindi');
+                    if (userDocSnapshot.exists()) {
+                        console.log('Kullanıcı dokümanı mevcut, silme işlemi devam ediyor');
+                        
+                        // Kullanıcının tüm yerlerini sil
+                        const placesSnapshot = await getDocs(placesCollectionRef);
+                        console.log('Silinecek yer sayısı:', placesSnapshot.docs.length);
+                        
+                        if (placesSnapshot.docs.length > 0) {
+                            for (const docRef of placesSnapshot.docs) {
+                                console.log('Siliniyor:', docRef.id);
+                                await deleteDoc(docRef.ref);
+                                console.log('Silindi:', docRef.id);
+                            }
+                            console.log('Tüm yerler silindi');
+                        }
+                        
+                        // Kullanıcı dokümanını sil
+                        console.log('Kullanıcı dokümanı siliniyor:', user.uid);
+                        await deleteDoc(userDocRef);
+                        
+                        // Silme işleminin başarılı olduğunu doğrula
+                        const verifyDoc = await getDoc(userDocRef);
+                        if (!verifyDoc.exists()) {
+                            console.log('Kullanıcı dokümanı başarıyla silindi ve doğrulandı');
+                            showStatus('Veritabanı verileri tamamen silindi, hesap kapatılıyor...', 'success');
+                        } else {
+                            throw new Error('Doküman silme işlemi başarısız');
+                        }
+                    } else {
+                        console.log('Kullanıcı dokümanı zaten mevcut değil');
+                        showStatus('Veritabanı verileri zaten temiz, hesap kapatılıyor...', 'info');
                     }
-                    
-                    // Kullanıcı dokümanını sil
-                    console.log('Kullanıcı dokümanı siliniyor:', user.uid);
-                    await deleteDoc(userDocRef);
-                    console.log('Kullanıcı dokümanı silindi');
-                    
-                    // Silme işleminin tamamlandığını doğrula
-                    showStatus('Veritabanı verileri silindi, hesap kapatılıyor...', 'info');
                     
                 } catch (firestoreError) {
                     console.error('Firestore silme hatası:', firestoreError);
