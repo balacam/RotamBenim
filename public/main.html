@@ -4193,6 +4193,9 @@
             try {
                 showStatus('Hesap siliniyor...', 'info');
                 
+                // Firestore fonksiyonlarını import et
+                const { doc, collection, getDocs, deleteDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                
                 // Önce Firestore'daki kullanıcı verilerini sil
                 const userDocRef = doc(db, 'users', user.uid);
                 const placesCollectionRef = collection(db, 'users', user.uid, 'places');
