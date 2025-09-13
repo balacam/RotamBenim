@@ -4198,20 +4198,28 @@
                 const { deleteUser } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
                 const db = getFirestore();
                 
-                // Önce Firestore'daki kullanıcı verilerini sil
+                // Önce Firestore'daki tüm kullanıcı verilerini sil
                 const userDocRef = doc(db, 'users', user.uid);
                 const placesCollectionRef = collection(db, 'users', user.uid, 'places');
                 
-                // Kullanıcının tüm yerlerini sil
-                const placesSnapshot = await getDocs(placesCollectionRef);
-                const deletePromises = placesSnapshot.docs.map(doc => deleteDoc(doc.ref));
-                await Promise.all(deletePromises);
-                
-                // Kullanıcı dokümanını sil
-                await deleteDoc(userDocRef);
+                try {
+                    // Kullanıcının tüm yerlerini sil
+                    const placesSnapshot = await getDocs(placesCollectionRef);
+                    const deletePromises = placesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+                    await Promise.all(deletePromises);
+                    
+                    // Kullanıcı dokümanını sil
+                    await deleteDoc(userDocRef);
+                    
+                    console.log('Firestore verileri başarıyla silindi');
+                } catch (firestoreError) {
+                    console.error('Firestore silme hatası:', firestoreError);
+                    // Firestore hatası olsa bile Auth hesabını silmeye devam et
+                }
                 
                 // Firebase Authentication'dan kullanıcıyı sil
                 await deleteUser(user);
+                console.log('Auth hesabı başarıyla silindi');
                 
                 showStatus('Hesabınız başarıyla silindi. Ana sayfaya yönlendiriliyorsunuz...', 'success');
                 
