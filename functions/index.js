@@ -10,6 +10,12 @@
 const {setGlobalOptions} = require("firebase-functions");
 const functions = require("firebase-functions");
 const fetch = require("node-fetch");
+const admin = require("firebase-admin");
+
+// Firebase Admin SDK'yı başlat
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time. This helps mitigate the impact of unexpected
@@ -283,4 +289,54 @@ exports.test = functions.https.onRequest(async (req, res) => {
     apiKey: FOURSQUARE_API_KEY ? 'API Key mevcut' : 'API Key eksik',
     timestamp: new Date().toISOString()
   });
+});
+
+// Hesap silme fonksiyonu - Server-side
+exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+  // Kullanıcının kimlik doğrulaması yapılmış olması gerekiyor
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Kullanıcı kimlik doğrulaması gerekli');
+  }
+
+  const uid = context.auth.uid;
+  console.log('Hesap silme işlemi başlatılıyor:', uid);
+
+  try {
+    const db = admin.firestore();
+    
+    // Kullanıcının places koleksiyonunu sil
+    const placesRef = db.collection('users').doc(uid).collection('places');
+    const placesSnapshot = await placesRef.get();
+    
+    console.log('Silinecek yer sayısı:', placesSnapshot.size);
+    
+    // Tüm places dokümanlarını sil
+    const batch = db.batch();
+    placesSnapshot.docs.forEach(doc => {
+      console.log('Batch\'e ekleniyor:', doc.id);
+      batch.delete(doc.ref);
+    });
+    
+    // Ana kullanıcı dokümanını da batch'e ekle
+    const userDocRef = db.collection('users').doc(uid);
+    batch.delete(userDocRef);
+    
+    // Batch işlemini çalıştır
+    await batch.commit();
+    console.log('Firestore verileri batch ile silindi');
+    
+    // Firebase Auth'dan kullanıcıyı sil
+    await admin.auth().deleteUser(uid);
+    console.log('Auth hesabı silindi:', uid);
+    
+    return {
+      success: true,
+      message: 'Hesap başarıyla silindi',
+      deletedPlaces: placesSnapshot.size
+    };
+    
+  } catch (error) {
+    console.error('Hesap silme hatası:', error);
+    throw new functions.https.HttpsError('internal', 'Hesap silme işlemi başarısız: ' + error.message);
+  }
 });

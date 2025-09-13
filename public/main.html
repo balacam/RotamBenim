@@ -4193,64 +4193,26 @@
             try {
                 showStatus('Hesap siliniyor...', 'info');
                 
-                // Firestore ve Auth fonksiyonlarını import et
-                const { doc, collection, getDocs, deleteDoc, getFirestore } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                const { deleteUser } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
-                const db = getFirestore();
+                // Firebase Functions'ı import et
+                const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js');
+                const functions = getFunctions();
                 
-                // Önce Firestore'daki tüm kullanıcı verilerini sil
-                const userDocRef = doc(db, 'users', user.uid);
-                const placesCollectionRef = collection(db, 'users', user.uid, 'places');
+                // Server-side hesap silme fonksiyonunu çağır
+                const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
                 
-                try {
-                    console.log('Kullanıcı verilerini silme işlemi başlatılıyor:', user.uid);
-                    
-                    // Önce dokümanın var olup olmadığını kontrol et
-                    const { getDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    const userDocSnapshot = await getDoc(userDocRef);
-                    
-                    if (userDocSnapshot.exists()) {
-                        console.log('Kullanıcı dokümanı mevcut, silme işlemi devam ediyor');
-                        
-                        // Kullanıcının tüm yerlerini sil
-                        const placesSnapshot = await getDocs(placesCollectionRef);
-                        console.log('Silinecek yer sayısı:', placesSnapshot.docs.length);
-                        
-                        if (placesSnapshot.docs.length > 0) {
-                            for (const docRef of placesSnapshot.docs) {
-                                console.log('Siliniyor:', docRef.id);
-                                await deleteDoc(docRef.ref);
-                                console.log('Silindi:', docRef.id);
-                            }
-                            console.log('Tüm yerler silindi');
-                        }
-                        
-                        // Kullanıcı dokümanını sil
-                        console.log('Kullanıcı dokümanı siliniyor:', user.uid);
-                        await deleteDoc(userDocRef);
-                        
-                        // Silme işleminin başarılı olduğunu doğrula
-                        const verifyDoc = await getDoc(userDocRef);
-                        if (!verifyDoc.exists()) {
-                            console.log('Kullanıcı dokümanı başarıyla silindi ve doğrulandı');
-                            showStatus('Veritabanı verileri tamamen silindi, hesap kapatılıyor...', 'success');
-                        } else {
-                            throw new Error('Doküman silme işlemi başarısız');
-                        }
-                    } else {
-                        console.log('Kullanıcı dokümanı zaten mevcut değil');
-                        showStatus('Veritabanı verileri zaten temiz, hesap kapatılıyor...', 'info');
-                    }
-                    
-                } catch (firestoreError) {
-                    console.error('Firestore silme hatası:', firestoreError);
-                    showStatus('Veritabanı silme hatası: ' + firestoreError.message, 'error');
-                    throw firestoreError; // Hata durumunda işlemi durdur
+                console.log('Server-side hesap silme işlemi başlatılıyor:', user.uid);
+                showStatus('Server üzerinden hesap siliniyor...', 'info');
+                
+                const result = await deleteUserAccount();
+                
+                console.log('Server-side silme sonucu:', result.data);
+                
+                if (result.data.success) {
+                    console.log('Hesap başarıyla silindi:', result.data.message);
+                    console.log('Silinen yer sayısı:', result.data.deletedPlaces);
+                } else {
+                    throw new Error('Server-side silme işlemi başarısız');
                 }
-                
-                // Firebase Authentication'dan kullanıcıyı sil
-                await deleteUser(user);
-                console.log('Auth hesabı başarıyla silindi');
                 
                 showStatus('Hesabınız başarıyla silindi. Ana sayfaya yönlendiriliyorsunuz...', 'success');
                 
