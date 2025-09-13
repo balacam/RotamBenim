@@ -562,7 +562,7 @@
     <script type="module">
         // Firebase imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithPopup, linkWithPopup, GoogleAuthProvider, TwitterAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, linkWithPopup, GoogleAuthProvider, TwitterAuthProvider, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
         import { getFirestore, collection, getDocs, addDoc, query, where, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -4188,17 +4188,7 @@
                 return;
             }
             
-            // İkinci onay
-            const finalConfirm = confirm(
-                'Son uyarı!\n\n' +
-                'Hesabınız kalıcı olarak silinecek ve bu işlem GERİ ALINAMAZ!\n\n' +
-                'Gerçekten devam etmek istiyor musunuz?'
-            );
-            
-            if (!finalConfirm) {
-                showStatus('Hesap silme işlemi iptal edildi.', 'info');
-                return;
-            }
+
             
             try {
                 showStatus('Hesap siliniyor...', 'info');
@@ -4216,7 +4206,7 @@
                 await deleteDoc(userDocRef);
                 
                 // Firebase Authentication'dan kullanıcıyı sil
-                await user.delete();
+                await deleteUser(user);
                 
                 showStatus('Hesabınız başarıyla silindi. Ana sayfaya yönlendiriliyorsunuz...', 'success');
                 
