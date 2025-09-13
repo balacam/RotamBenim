@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Kullanıcılar sadece kendi verilerini okuyabilir, yazabilir ve silebilir
+    match /users/{userId} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+      
+      // Kullanıcının places alt koleksiyonu
+      match /places/{placeId} {
+        allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Diğer tüm belgeler için erişimi reddet
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

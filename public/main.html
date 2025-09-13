@@ -4203,18 +4203,33 @@
                 const placesCollectionRef = collection(db, 'users', user.uid, 'places');
                 
                 try {
+                    console.log('Kullanıcı verilerini silme işlemi başlatılıyor:', user.uid);
+                    
                     // Kullanıcının tüm yerlerini sil
                     const placesSnapshot = await getDocs(placesCollectionRef);
-                    const deletePromises = placesSnapshot.docs.map(doc => deleteDoc(doc.ref));
-                    await Promise.all(deletePromises);
+                    console.log('Silinecek yer sayısı:', placesSnapshot.docs.length);
+                    
+                    if (placesSnapshot.docs.length > 0) {
+                        const deletePromises = placesSnapshot.docs.map(docRef => {
+                            console.log('Siliniyor:', docRef.id);
+                            return deleteDoc(docRef.ref);
+                        });
+                        await Promise.all(deletePromises);
+                        console.log('Tüm yerler silindi');
+                    }
                     
                     // Kullanıcı dokümanını sil
+                    console.log('Kullanıcı dokümanı siliniyor:', user.uid);
                     await deleteDoc(userDocRef);
+                    console.log('Kullanıcı dokümanı silindi');
                     
-                    console.log('Firestore verileri başarıyla silindi');
+                    // Silme işleminin tamamlandığını doğrula
+                    showStatus('Veritabanı verileri silindi, hesap kapatılıyor...', 'info');
+                    
                 } catch (firestoreError) {
                     console.error('Firestore silme hatası:', firestoreError);
-                    // Firestore hatası olsa bile Auth hesabını silmeye devam et
+                    showStatus('Veritabanı silme hatası: ' + firestoreError.message, 'error');
+                    throw firestoreError; // Hata durumunda işlemi durdur
                 }
                 
                 // Firebase Authentication'dan kullanıcıyı sil
