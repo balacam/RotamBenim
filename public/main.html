@@ -4020,7 +4020,7 @@
                                   showStatus('Twitter hesabınız zaten bu hesaba bağlı.', 'info');
                                   toggle.classList.add('active');
                               } else if (linkError.code === 'auth/credential-already-in-use') {
-                                  showStatus('Bu Twitter hesabı zaten kullanımda. Farklı bir Twitter hesabı deneyin veya mevcut bağlantıyı kesin.', 'error');
+                                  showStatus('⚠️ Bu X (Twitter) hesabı zaten başka bir Firebase hesabına bağlı!\n\n🔧 Çözüm seçenekleri:\n• Farklı bir X hesabı kullanın\n• Mevcut bağlantının olduğu hesaba giriş yapıp bağlantıyı kesin\n• Firebase Console\'dan hesap yönetimini kontrol edin', 'error');
                               } else if (linkError.code === 'auth/invalid-credential') {
                                   showStatus('Twitter bağlantısında hata oluştu. Lütfen tekrar deneyin veya farklı bir hesap kullanın.', 'error');
                               } else if (linkError.code === 'auth/popup-closed-by-user') {
