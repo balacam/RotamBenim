@@ -3912,19 +3912,28 @@
             // Yeni bağlantı kur
             try {
                 if (provider === 'twitter') {
+                     console.log('=== X (Twitter) Bağlantı İşlemi Başlıyor ===');
                      showStatus('X (Twitter) ile bağlanılıyor...', 'info');
                      
+                     console.log('TwitterAuthProvider oluşturuluyor...');
                      const twitterProvider = new TwitterAuthProvider();
+                     console.log('TwitterAuthProvider oluşturuldu:', twitterProvider);
                      
                      // Eğer kullanıcı zaten giriş yapmışsa, hesabı bağla
                      if (auth.currentUser) {
                          console.log('Mevcut kullanıcı var, account linking deneniyor:', auth.currentUser.uid);
+                         console.log('linkWithPopup çağrılıyor...');
                          try {
                              const result = await linkWithPopup(auth.currentUser, twitterProvider);
                              console.log('X (Twitter) hesabı mevcut kullanıcıya bağlandı:', result.user);
                              showStatus('X (Twitter) hesabınız mevcut hesabınıza başarıyla bağlandı!', 'success');
+                             toggle.classList.add('active');
                          } catch (linkError) {
-                              console.log('Link hatası:', linkError.code, linkError.message);
+                              console.error('=== LINK HATASI ===');
+                              console.error('Hata kodu:', linkError.code);
+                              console.error('Hata mesajı:', linkError.message);
+                              console.error('Tam hata objesi:', linkError);
+                              
                               if (linkError.code === 'auth/account-exists-with-different-credential') {
                                   showStatus('Bu Twitter hesabı zaten başka bir hesapla bağlı. Önce o hesaptan bağlantıyı kesin.', 'error');
                               } else if (linkError.code === 'auth/provider-already-linked') {
@@ -3934,20 +3943,35 @@
                                   showStatus('Bu Twitter hesabı zaten kullanımda. Farklı bir Twitter hesabı deneyin veya mevcut bağlantıyı kesin.', 'error');
                               } else if (linkError.code === 'auth/invalid-credential') {
                                   showStatus('Twitter bağlantısında hata oluştu. Lütfen tekrar deneyin veya farklı bir hesap kullanın.', 'error');
+                              } else if (linkError.code === 'auth/popup-closed-by-user') {
+                                  showStatus('Twitter bağlantı penceresi kapatıldı. Lütfen tekrar deneyin.', 'error');
+                              } else if (linkError.code === 'auth/popup-blocked') {
+                                  showStatus('Popup engellendi. Lütfen popup engelleyiciyi kapatın ve tekrar deneyin.', 'error');
                               } else {
+                                  console.error('Bilinmeyen hata, üst catch\'e gönderiliyor:', linkError);
                                   throw linkError; // Diğer hataları üst catch'e gönder
                               }
+                              return; // Hata durumunda fonksiyondan çık
                           }
                      } else {
                          // Kullanıcı giriş yapmamışsa normal sign in yap
                          console.log('Kullanıcı giriş yapmamış, normal sign in yapılıyor');
-                         const result = await signInWithPopup(auth, twitterProvider);
-                         console.log('X (Twitter) ile giriş başarılı:', result.user);
-                         showStatus('X (Twitter) hesabınız başarıyla bağlandı!', 'success');
+                         console.log('signInWithPopup çağrılıyor...');
+                         try {
+                             const result = await signInWithPopup(auth, twitterProvider);
+                             console.log('X (Twitter) ile giriş başarılı:', result.user);
+                             showStatus('X (Twitter) hesabınız başarıyla bağlandı!', 'success');
+                             toggle.classList.add('active');
+                         } catch (signInError) {
+                             console.error('=== SIGN IN HATASI ===');
+                             console.error('Hata kodu:', signInError.code);
+                             console.error('Hata mesajı:', signInError.message);
+                             console.error('Tam hata objesi:', signInError);
+                             throw signInError; // Üst catch'e gönder
+                         }
                      }
-                    
-                    // Başarılı bağlantı
-                    toggle.classList.add('active');
+                     
+                     console.log('=== X (Twitter) Bağlantı İşlemi Tamamlandı ===');
                     
                 } else if (provider === 'facebook') {
                     showStatus('Facebook bağlantısı henüz aktif değil.', 'error');
