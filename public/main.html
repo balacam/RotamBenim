@@ -4195,8 +4195,8 @@
                 return;
             }
             
-            // İlk onay dialogu
-            const firstConfirm = confirm(
+            // Onay dialogu
+            const confirmDelete = confirm(
                 'Hesabınızı silmek istediğinizden emin misiniz?\n\n' +
                 '⚠️ Bu işlem geri alınamaz!\n' +
                 '• Tüm verileriniz silinecek\n' +
@@ -4205,21 +4205,7 @@
                 'Devam etmek için "Tamam"a basın.'
             );
             
-            if (!firstConfirm) {
-                showStatus('Hesap silme işlemi iptal edildi.', 'info');
-                return;
-            }
-            
-            // İkinci kesin onay dialogu
-            const finalConfirm = confirm(
-                '⚠️ SON UYARI ⚠️\n\n' +
-                'Hesabınızı kalıcı olarak silmek üzeresiniz!\n\n' +
-                'Bu işlem GERİ ALINAMAZ ve TÜM VERİLERİNİZ kaybolacak.\n\n' +
-                'Gerçekten devam etmek istiyorsanız "Tamam"a basın.\n' +
-                'Emin değilseniz "İptal"e basın.'
-            );
-            
-            if (!finalConfirm) {
+            if (!confirmDelete) {
                 showStatus('Hesap silme işlemi iptal edildi.', 'info');
                 return;
             }
@@ -4229,27 +4215,10 @@
             try {
                 showStatus('Hesap siliniyor...', 'info');
                 
-                // Firebase Functions'ı import et
-                const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js');
-                const functions = getFunctions();
+                // Önce client-side hesap silme işlemini dene
+                await user.delete();
                 
-                // Server-side hesap silme fonksiyonunu çağır
-                const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
-                
-                console.log('Server-side hesap silme işlemi başlatılıyor:', user.uid);
-                showStatus('Server üzerinden hesap siliniyor...', 'info');
-                
-                const result = await deleteUserAccount();
-                
-                console.log('Server-side silme sonucu:', result.data);
-                
-                if (result.data.success) {
-                    console.log('Hesap başarıyla silindi:', result.data.message);
-                    console.log('Silinen yer sayısı:', result.data.deletedPlaces);
-                } else {
-                    throw new Error('Server-side silme işlemi başarısız');
-                }
-                
+                console.log('Client-side hesap silme başarılı');
                 showStatus('Hesabınız başarıyla silindi. Ana sayfaya yönlendiriliyorsunuz...', 'success');
                 
                 // Modal'ı kapat ve ana sayfaya yönlendir
