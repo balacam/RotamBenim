@@ -3938,14 +3938,7 @@
                     
                     <div class="danger-zone">
 
-                        <p style="color: #6c757d; font-size: 12px; margin-bottom: 12px;">Test verilerinizi temizleyebilir veya hesabınızı tamamen silebilirsiniz.</p>
-                        
-                        <button class="cleanup-data-btn" onclick="cleanupTestData()" style="background: #17a2b8; margin-bottom: 10px; width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
-                            </svg>
-                            Test Verilerini Temizle
-                        </button>
+                        <p style="color: #6c757d; font-size: 12px; margin-bottom: 12px;">Hesabınızı tamamen silebilirsiniz.</p>
                         
                         <p style="color: #6c757d; font-size: 12px; margin-bottom: 12px;">Hesabınızı sildikten sonra geri dönüş yoktur. Lütfen emin olun.</p>
                         <button class="delete-account-btn" onclick="deleteAccount()">
@@ -4176,9 +4169,29 @@
         
         // Delete Account Function
         async function deleteAccount() {
+            // Auth durumunu kontrol et
+            await new Promise((resolve) => {
+                const unsubscribe = auth.onAuthStateChanged((user) => {
+                    unsubscribe();
+                    resolve(user);
+                });
+            });
+            
             const user = auth.currentUser;
             if (!user) {
-                showStatus('Kullanıcı oturumu bulunamadı.', 'error');
+                showStatus('Kullanıcı oturumu bulunamadı. Lütfen giriş yapın.', 'error');
+                return;
+            }
+            
+            console.log('Kullanıcı kimlik doğrulandı:', user.uid);
+            
+            // ID token'ı yenile
+            try {
+                await user.getIdToken(true);
+                console.log('ID token yenilendi');
+            } catch (tokenError) {
+                console.error('Token yenileme hatası:', tokenError);
+                showStatus('Kimlik doğrulama hatası. Lütfen çıkış yapıp tekrar giriş yapın.', 'error');
                 return;
             }
             
@@ -4260,91 +4273,7 @@
             }
         }
         
-        // Test verilerini temizleme fonksiyonu
-        async function cleanupTestData() {
-            // Auth durumunu kontrol et
-            await new Promise((resolve) => {
-                const unsubscribe = auth.onAuthStateChanged((user) => {
-                    unsubscribe();
-                    resolve(user);
-                });
-            });
-            
-            const user = auth.currentUser;
-            if (!user) {
-                showStatus('Kullanıcı oturumu bulunamadı. Lütfen giriş yapın.', 'error');
-                return;
-            }
-            
-            console.log('Kullanıcı kimlik doğrulandı:', user.uid);
-            
-            // ID token'ı yenile
-            try {
-                await user.getIdToken(true);
-                console.log('ID token yenilendi');
-            } catch (tokenError) {
-                console.error('Token yenileme hatası:', tokenError);
-                showStatus('Kimlik doğrulama hatası. Lütfen çıkış yapıp tekrar giriş yapın.', 'error');
-                return;
-            }
-            
-            // Onay dialogu göster
-            const confirmCleanup = confirm(
-                'Test verilerinizi temizlemek istediğinizden emin misiniz?\n\n' +
-                '• Kaydettiğiniz tüm yerler silinecek\n' +
-                '• Hesap bilgileriniz korunacak\n' +
-                '• Bu işlem geri alınamaz\n\n' +
-                'Devam etmek için "Tamam"a basın.'
-            );
-            
-            if (!confirmCleanup) {
-                showStatus('Veri temizleme işlemi iptal edildi.', 'info');
-                return;
-            }
-            
-            try {
-                showStatus('Test verileri temizleniyor...', 'info');
-                
-                // Firebase Functions'ı import et
-                const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js');
-                const functions = getFunctions();
-                
-                // Server-side veri temizleme fonksiyonunu çağır
-                const cleanupTestData = httpsCallable(functions, 'cleanupTestData');
-                
-                console.log('Server-side veri temizleme işlemi başlatılıyor:', user.uid);
-                
-                const result = await cleanupTestData();
-                
-                console.log('Server-side temizleme sonucu:', result.data);
-                
-                if (result.data.success) {
-                    console.log('Test verileri başarıyla temizlendi:', result.data.message);
-                    console.log('Silinen yer sayısı:', result.data.deletedPlaces);
-                    showStatus(`Test verileri başarıyla temizlendi! ${result.data.deletedPlaces} yer silindi.`, 'success');
-                    
-                    // Sayfayı yenile
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    throw new Error('Server-side temizleme işlemi başarısız');
-                }
-                
-            } catch (error) {
-                console.error('Veri temizleme hatası:', error);
-                
-                let errorMessage = 'Test verileri temizlenirken hata oluştu.';
-                
-                if (error.code === 'unauthenticated') {
-                    errorMessage = 'Kimlik doğrulama hatası. Lütfen tekrar giriş yapın.';
-                } else if (error.code === 'permission-denied') {
-                    errorMessage = 'Veri temizleme izni reddedildi. Lütfen tekrar deneyin.';
-                }
-                
-                showStatus(errorMessage, 'error');
-            }
-        }
+
     </script>
     
     <script src="/js/enhanced-background-manager.js"></script>
