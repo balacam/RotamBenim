@@ -291,6 +291,64 @@ exports.test = functions.https.onRequest(async (req, res) => {
   });
 });
 
+// Toplu veri temizleme fonksiyonu - Admin kullanımı için
+exports.cleanupTestData = functions.https.onCall(async (data, context) => {
+  // Kullanıcının kimlik doğrulaması yapılmış olması gerekiyor
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Kullanıcı kimlik doğrulaması gerekli');
+  }
+
+  const uid = context.auth.uid;
+  console.log('Test verisi temizleme işlemi başlatılıyor:', uid);
+
+  try {
+    const db = admin.firestore();
+    let totalDeleted = 0;
+    
+    // Kullanıcının tüm koleksiyonlarını temizle
+    const userDocRef = db.collection('users').doc(uid);
+    
+    // Places koleksiyonunu temizle
+    const placesRef = userDocRef.collection('places');
+    const placesSnapshot = await placesRef.get();
+    
+    if (!placesSnapshot.empty) {
+      const batch = db.batch();
+      placesSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+        totalDeleted++;
+      });
+      await batch.commit();
+      console.log('Places koleksiyonu temizlendi:', totalDeleted);
+    }
+    
+    // Ana kullanıcı dokümanını kontrol et ve gereksiz alanları temizle
+    const userDoc = await userDocRef.get();
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      // Sadece gerekli alanları koru
+      const cleanData = {
+        email: userData.email || '',
+        displayName: userData.displayName || '',
+        createdAt: userData.createdAt || admin.firestore.FieldValue.serverTimestamp()
+      };
+      await userDocRef.set(cleanData);
+      console.log('Kullanıcı dokümanı temizlendi');
+    }
+    
+    return {
+      success: true,
+      message: 'Test verileri başarıyla temizlendi',
+      deletedPlaces: totalDeleted,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('Test verisi temizleme hatası:', error);
+    throw new functions.https.HttpsError('internal', 'Test verisi temizleme işlemi başarısız: ' + error.message);
+  }
+});
+
 // Hesap silme fonksiyonu - Server-side
 exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
   // Kullanıcının kimlik doğrulaması yapılmış olması gerekiyor
