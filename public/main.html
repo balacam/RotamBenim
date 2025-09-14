@@ -4195,8 +4195,8 @@
                 return;
             }
             
-            // Onay dialogu
-            const confirmDelete = confirm(
+            // İlk onay dialogu
+            const firstConfirm = confirm(
                 'Hesabınızı silmek istediğinizden emin misiniz?\n\n' +
                 '⚠️ Bu işlem geri alınamaz!\n' +
                 '• Tüm verileriniz silinecek\n' +
@@ -4205,7 +4205,21 @@
                 'Devam etmek için "Tamam"a basın.'
             );
             
-            if (!confirmDelete) {
+            if (!firstConfirm) {
+                showStatus('Hesap silme işlemi iptal edildi.', 'info');
+                return;
+            }
+            
+            // İkinci onay dialogu - Ekstra güvenlik
+            const secondConfirm = confirm(
+                '⚠️ SON UYARI! ⚠️\n\n' +
+                'Hesabınızı kalıcı olarak silmek üzeresiniz!\n' +
+                'Bu işlem GERİ ALINAMAZ ve TÜM VERİLERİNİZ kaybolacak.\n\n' +
+                'Gerçekten devam etmek istiyorsanız "Tamam"a basın.\n' +
+                'Emin değilseniz "İptal"e basın.'
+            );
+            
+            if (!secondConfirm) {
                 showStatus('Hesap silme işlemi iptal edildi.', 'info');
                 return;
             }
