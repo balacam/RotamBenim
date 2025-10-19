@@ -37,248 +37,402 @@ setGlobalOptions({ maxInstances: 10 });
 //   response.send("Hello from Firebase!");
 // });
 
-const FOURSQUARE_API_KEY = "JOU3DLQL13TMVPJANZOG10AAJJKRCCYG0CW3HDSWTIIJ45ZD";
+// Get API key from environment - set via: firebase functions:config:set foursquare.api_key="YOUR_KEY"
+const config = functions.config();
+const FOURSQUARE_API_KEY = config.foursquare && config.foursquare.api_key;
+if (!FOURSQUARE_API_KEY) {
+  console.error('ERROR: Foursquare API key not configured. Run: firebase functions:config:set foursquare.api_key="YOUR_KEY"');
+}
 
 exports.foursquare = functions.https.onRequest(async (req, res) => {
-  // CORS header ekle
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS headers
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  // Preflight (OPTIONS) isteğine hemen cevap ver
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
+  // Handle preflight OPTIONS request
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
     return;
   }
 
+  // Validate API key
+  if (!FOURSQUARE_API_KEY) {
+    console.error("Foursquare API key is not configured");
+    return res.status(500).json({
+      error: "API configuration error",
+      message: "Foursquare API key not configured",
+    });
+  }
+
+  // Extract and validate query parameter
   const query = req.query.query;
-  if (!query) return res.status(400).json({ error: "query param required" });
-  
-  console.log('Mock API çağrısı:', query);
-  console.log('Query içeriği:', query.toLowerCase());
-  
-  // Mock data ile test (gerçek API çalışana kadar)
-  let mockData = { results: [] };
-  
-  // Berlin için mock data
-  if (query.toLowerCase().includes('berlin')) {
-    mockData = {
-      results: [
-        {
-          fsq_id: "berlin1",
-          name: "Brandenburg Gate",
-          location: {
-            country: "Germany",
-            formatted_address: "Pariser Platz, 10117 Berlin, Germany"
-          },
-          categories: [{ name: "Historic Site" }],
-          description: "Berlin'in en ünlü simgesi olan Brandenburg Kapısı"
-        },
-      {
-        fsq_id: "berlin2", 
-        name: "Berlin Wall Memorial",
-        location: {
-          country: "Germany",
-          formatted_address: "Bernauer Str. 111, 13355 Berlin, Germany"
-        },
-        categories: [{ name: "Historic Site" }],
-        description: "Berlin Duvarı Anıtı ve müzesi"
-      },
-      {
-        fsq_id: "berlin3",
-        name: "Reichstag Building",
-        location: {
-          country: "Germany", 
-          formatted_address: "Platz der Republik 1, 11011 Berlin, Germany"
-        },
-        categories: [{ name: "Government Building" }],
-        description: "Alman Parlamentosu'nun bulunduğu tarihi bina"
-      },
-      {
-        fsq_id: "berlin4",
-        name: "Museum Island",
-        location: {
-          country: "Germany",
-          formatted_address: "Museumsinsel, 10117 Berlin, Germany"
-        },
-        categories: [{ name: "Museum" }],
-        description: "UNESCO Dünya Mirası listesinde yer alan müze adası"
-      },
-      {
-        fsq_id: "berlin5",
-        name: "Checkpoint Charlie",
-        location: {
-          country: "Germany",
-          formatted_address: "Friedrichstraße 43-45, 10117 Berlin, Germany"
-        },
-        categories: [{ name: "Historic Site" }],
-        description: "Soğuk Savaş döneminin en ünlü sınır kapısı"
-      },
-      {
-        fsq_id: "berlin6",
-        name: "Tiergarten Park",
-        location: {
-          country: "Germany",
-          formatted_address: "Tiergarten, 10785 Berlin, Germany"
-        },
-        categories: [{ name: "Park" }],
-        description: "Berlin'in kalbinde yer alan 210 hektarlık büyük park"
-      },
-      {
-        fsq_id: "berlin7",
-        name: "Potsdamer Platz",
-        location: {
-          country: "Germany",
-          formatted_address: "Potsdamer Platz, 10117 Berlin, Germany"
-        },
-        categories: [{ name: "Shopping Center" }],
-        description: "Modern Berlin'in kalbi olan bu meydan"
-      },
-      {
-        fsq_id: "berlin8",
-        name: "Berlin Cathedral",
-        location: {
-          country: "Germany",
-          formatted_address: "Am Lustgarten, 10178 Berlin, Germany"
-        },
-        categories: [{ name: "Religious Site" }],
-        description: "Spree Nehri kıyısında yer alan görkemli Protestan katedrali"
-      },
-      {
-        fsq_id: "berlin9",
-        name: "Alexanderplatz",
-        location: {
-          country: "Germany",
-          formatted_address: "Alexanderplatz, 10178 Berlin, Germany"
-        },
-        categories: [{ name: "Square" }],
-        description: "Berlin'in en büyük meydanlarından biri"
-      },
-      {
-        fsq_id: "berlin10",
-        name: "Charlottenburg Palace",
-        location: {
-          country: "Germany",
-          formatted_address: "Spandauer Damm 10-22, 14059 Berlin, Germany"
-        },
-        categories: [{ name: "Palace" }],
-        description: "Berlin'in en büyük sarayı ve Prusya kraliyet ailesinin eski ikametgahı"
-      }
-    ]
-  };
+  if (!query) {
+    return res.status(400).json({
+      error: "Missing required parameter",
+      message: "Query parameter is required",
+    });
   }
-  
-  // İstanbul için mock data
-  if (query.toLowerCase().includes('istanbul')) {
-    console.log('İstanbul için mock data döndürülüyor');
-    mockData = {
-      results: [
-        {
-          fsq_id: "istanbul1",
-          name: "Ayasofya",
-          location: {
-            country: "Turkey",
-            formatted_address: "Sultan Ahmet, Ayasofya Meydanı, 34122 Fatih/İstanbul, Turkey"
-          },
-          categories: [{ name: "Historic Site" }],
-          description: "Bizans döneminden kalma tarihi yapı, şimdi müze olarak kullanılıyor"
-        },
-        {
-          fsq_id: "istanbul2",
-          name: "Sultanahmet Camii (Blue Mosque)",
-          location: {
-            country: "Turkey",
-            formatted_address: "Sultan Ahmet, Atmeydanı Cd. No:7, 34122 Fatih/İstanbul, Turkey"
-          },
-          categories: [{ name: "Religious Site" }],
-          description: "Mavi çinileriyle ünlü tarihi cami"
-        },
-        {
-          fsq_id: "istanbul3",
-          name: "Topkapı Sarayı",
-          location: {
-            country: "Turkey",
-            formatted_address: "Cankurtaran, 34122 Fatih/İstanbul, Turkey"
-          },
-          categories: [{ name: "Palace" }],
-          description: "Osmanlı İmparatorluğu'nun yönetim merkezi olan tarihi saray"
-        },
-        {
-          fsq_id: "istanbul4",
-          name: "Kapalıçarşı",
-          location: {
-            country: "Turkey",
-            formatted_address: "Beyazıt, Kalpakçılar Cd. No:22, 34126 Fatih/İstanbul, Turkey"
-          },
-          categories: [{ name: "Shopping Center" }],
-          description: "Dünyanın en büyük kapalı çarşılarından biri"
-        },
-        {
-          fsq_id: "istanbul5",
-          name: "Boğaziçi Köprüsü",
-          location: {
-            country: "Turkey",
-            formatted_address: "Ortaköy, 34347 Beşiktaş/İstanbul, Turkey"
-          },
-          categories: [{ name: "Bridge" }],
-          description: "Avrupa ve Asya kıtalarını birleştiren ikonik köprü"
-        },
-        {
-          fsq_id: "istanbul6",
-          name: "Galata Kulesi",
-          location: {
-            country: "Turkey",
-            formatted_address: "Bereketzade, Galata Kulesi Sk., 34421 Beyoğlu/İstanbul, Turkey"
-          },
-          categories: [{ name: "Tower" }],
-          description: "İstanbul'un en eski yapılarından biri, şehrin panoramik manzarasını sunuyor"
-        },
-        {
-          fsq_id: "istanbul7",
-          name: "Dolmabahçe Sarayı",
-          location: {
-            country: "Turkey",
-            formatted_address: "Vişnezade, Dolmabahçe Cd., 34357 Beşiktaş/İstanbul, Turkey"
-          },
-          categories: [{ name: "Palace" }],
-          description: "Boğaz kıyısında yer alan görkemli Osmanlı sarayı"
-        },
-        {
-          fsq_id: "istanbul8",
-          name: "Süleymaniye Camii",
-          location: {
-            country: "Turkey",
-            formatted_address: "Süleymaniye, Prof. Sıddık Sami Onar Cd. No:1, 34116 Fatih/İstanbul, Turkey"
-          },
-          categories: [{ name: "Religious Site" }],
-          description: "Mimar Sinan'ın başyapıtı olan tarihi cami"
-        },
-        {
-          fsq_id: "istanbul9",
-          name: "Yerebatan Sarnıcı",
-          location: {
-            country: "Turkey",
-            formatted_address: "Alemdar, Yerebatan Cd. 1/3, 34110 Fatih/İstanbul, Turkey"
-          },
-          categories: [{ name: "Historic Site" }],
-          description: "Bizans döneminden kalma yeraltı su sarnıcı"
-        },
-        {
-          fsq_id: "istanbul10",
-          name: "Ortaköy Camii",
-          location: {
-            country: "Turkey",
-            formatted_address: "Mecidiye, Mecidiye Köprüsü Sk., 34347 Beşiktaş/İstanbul, Turkey"
-          },
-          categories: [{ name: "Religious Site" }],
-          description: "Boğaz kıyısında yer alan zarif cami"
-        }
-      ]
+
+  // Extract optional parameters
+  const limit = parseInt(req.query.limit) || 20;
+  const ll = req.query.ll; // latitude,longitude
+  const near = req.query.near; // location string
+  const categories = req.query.categories; // category IDs
+
+  console.log("Foursquare API request:", {
+    query,
+    limit,
+    ll,
+    near,
+    categories,
+  });
+
+  try {
+    // Build Foursquare API URL
+    const baseUrl = "https://api.foursquare.com/v3/places/search";
+    const params = new URLSearchParams();
+    
+    params.append("query", query);
+    params.append("limit", Math.min(limit, 50).toString()); // Max 50 per request
+    params.append("fields", "fsq_id,name,location,categories,description,photos,rating,price,hours,website,tel,email");
+    
+    if (ll) {
+      params.append("ll", ll);
+    } else if (near) {
+      params.append("near", near);
+    }
+    
+    if (categories) {
+      params.append("categories", categories);
+    }
+
+    const apiUrl = `${baseUrl}?${params.toString()}`;
+    
+    console.log("Making request to Foursquare API:", apiUrl);
+
+    // Make request to Foursquare API
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Authorization": FOURSQUARE_API_KEY,
+      },
+    });
+
+    // Check if request was successful
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Foursquare API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      });
+      
+      return res.status(response.status).json({
+        error: "Foursquare API error",
+        message: `API request failed with status ${response.status}`,
+        details: errorText,
+      });
+    }
+
+    // Parse response
+    const data = await response.json();
+    
+    console.log(`Foursquare API returned ${(data.results && data.results.length) || 0} results`);
+
+    // Transform data to match expected format
+    const transformedResults = data.results ? data.results.map(place => ({
+      fsq_id: place.fsq_id,
+      name: place.name,
+      location: {
+        address: place.location && place.location.address,
+        country: place.location && place.location.country,
+        formatted_address: place.location && place.location.formatted_address,
+        locality: place.location && place.location.locality,
+        postcode: place.location && place.location.postcode,
+        region: place.location && place.location.region,
+        lat: place.location && place.location.lat,
+        lng: place.location && place.location.lng,
+      },
+      categories: place.categories ? place.categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+      })) : [],
+      description: place.description,
+      rating: place.rating,
+      price: place.price,
+      photos: place.photos ? place.photos.map(photo => ({
+        id: photo.id,
+        url: `${photo.prefix}original${photo.suffix}`,
+        thumb: `${photo.prefix}300x300${photo.suffix}`,
+      })) : [],
+      hours: place.hours,
+      website: place.website,
+      tel: place.tel,
+      email: place.email,
+    })) : [];
+
+    // Return transformed data
+    res.json({
+      results: transformedResults,
+      total: transformedResults.length,
+      query: query,
+      timestamp: new Date().toISOString(),
+    });
+
+  } catch (error) {
+    console.error("Error calling Foursquare API:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to fetch places from Foursquare API",
+      details: error.message,
+    });
+  }
+});
+
+// Get place details by ID
+exports.foursquarePlace = functions.https.onRequest(async (req, res) => {
+  // CORS headers
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  if (!FOURSQUARE_API_KEY) {
+    return res.status(500).json({
+      error: "API configuration error",
+      message: "Foursquare API key not configured",
+    });
+  }
+
+  const placeId = req.query.fsq_id || req.params.fsq_id;
+  if (!placeId) {
+    return res.status(400).json({
+      error: "Missing required parameter",
+      message: "Place ID (fsq_id) is required",
+    });
+  }
+
+  try {
+    const apiUrl = `https://api.foursquare.com/v3/places/${placeId}?fields=fsq_id,name,location,categories,description,photos,rating,price,hours,website,tel,email,social_media,tips,tastes,features`;
+    
+    console.log("Fetching place details:", apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Authorization": FOURSQUARE_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Foursquare API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      });
+      
+      return res.status(response.status).json({
+        error: "Foursquare API error",
+        message: `Failed to fetch place details: ${response.status}`,
+        details: errorText,
+      });
+    }
+
+    const place = await response.json();
+    
+    // Transform the place data
+    const transformedPlace = {
+      fsq_id: place.fsq_id,
+      name: place.name,
+      location: {
+        address: place.location && place.location.address,
+        country: place.location && place.location.country,
+        formatted_address: place.location && place.location.formatted_address,
+        locality: place.location && place.location.locality,
+        postcode: place.location && place.location.postcode,
+        region: place.location && place.location.region,
+        lat: place.location && place.location.lat,
+        lng: place.location && place.location.lng,
+      },
+      categories: place.categories ? place.categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+      })) : [],
+      description: place.description,
+      rating: place.rating,
+      price: place.price,
+      photos: place.photos ? place.photos.map(photo => ({
+        id: photo.id,
+        url: `${photo.prefix}original${photo.suffix}`,
+        thumb: `${photo.prefix}300x300${photo.suffix}`,
+      })) : [],
+      hours: place.hours,
+      website: place.website,
+      tel: place.tel,
+      email: place.email,
+      social_media: place.social_media,
+      tips: place.tips,
+      tastes: place.tastes,
+      features: place.features,
     };
+
+    res.json({
+      place: transformedPlace,
+      timestamp: new Date().toISOString(),
+    });
+
+  } catch (error) {
+    console.error("Error fetching place details:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to fetch place details",
+      details: error.message,
+    });
   }
-  
-  console.log('Mock data döndürülüyor:', mockData);
-  res.json(mockData);
+});
+
+// Get nearby places by location
+exports.foursquareNearby = functions.https.onRequest(async (req, res) => {
+  // CORS headers
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  if (!FOURSQUARE_API_KEY) {
+    return res.status(500).json({
+      error: "API configuration error",
+      message: "Foursquare API key not configured",
+    });
+  }
+
+  const ll = req.query.ll; // latitude,longitude
+  if (!ll) {
+    return res.status(400).json({
+      error: "Missing required parameter",
+      message: "Location (ll) parameter is required (format: lat,lng)",
+    });
+  }
+
+  // Validate lat,lng format
+  const coordinates = ll.split(',');
+  if (coordinates.length !== 2 || isNaN(coordinates[0]) || isNaN(coordinates[1])) {
+    return res.status(400).json({
+      error: "Invalid parameter format",
+      message: "Location (ll) must be in format: latitude,longitude",
+    });
+  }
+
+  const limit = parseInt(req.query.limit) || 20;
+  const radius = parseInt(req.query.radius) || 1000; // meters
+  const categories = req.query.categories;
+  const sort = req.query.sort || "DISTANCE";
+
+  try {
+    const baseUrl = "https://api.foursquare.com/v3/places/nearby";
+    const params = new URLSearchParams();
+    
+    params.append("ll", ll);
+    params.append("limit", Math.min(limit, 50).toString());
+    params.append("radius", Math.min(radius, 100000).toString()); // Max 100km
+    params.append("sort", sort);
+    params.append("fields", "fsq_id,name,location,categories,description,photos,rating,price,hours,distance");
+    
+    if (categories) {
+      params.append("categories", categories);
+    }
+
+    const apiUrl = `${baseUrl}?${params.toString()}`;
+    
+    console.log("Finding nearby places:", apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Authorization": FOURSQUARE_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Foursquare API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      });
+      
+      return res.status(response.status).json({
+        error: "Foursquare API error",
+        message: `Failed to find nearby places: ${response.status}`,
+        details: errorText,
+      });
+    }
+
+    const data = await response.json();
+    
+    console.log(`Found ${(data.results && data.results.length) || 0} nearby places`);
+
+    const transformedResults = data.results ? data.results.map(place => ({
+      fsq_id: place.fsq_id,
+      name: place.name,
+      location: {
+        address: place.location && place.location.address,
+        country: place.location && place.location.country,
+        formatted_address: place.location && place.location.formatted_address,
+        locality: place.location && place.location.locality,
+        postcode: place.location && place.location.postcode,
+        region: place.location && place.location.region,
+        lat: place.location && place.location.lat,
+        lng: place.location && place.location.lng,
+      },
+      categories: place.categories ? place.categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+      })) : [],
+      description: place.description,
+      rating: place.rating,
+      price: place.price,
+      distance: place.distance,
+      photos: place.photos ? place.photos.map(photo => ({
+        id: photo.id,
+        url: `${photo.prefix}original${photo.suffix}`,
+        thumb: `${photo.prefix}300x300${photo.suffix}`,
+      })) : [],
+      hours: place.hours,
+    })) : [];
+
+    res.json({
+      results: transformedResults,
+      total: transformedResults.length,
+      location: ll,
+      radius: radius,
+      timestamp: new Date().toISOString(),
+    });
+
+  } catch (error) {
+    console.error("Error finding nearby places:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to find nearby places",
+      details: error.message,
+    });
+  }
 });
 
 // Test endpoint

@@ -1,4 +1,5 @@
 // Foursquare Places API Proxy
+require('dotenv').config();
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
@@ -6,9 +7,12 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Güvenli şekilde .env'den veya buradan anahtar alınabilir
-env = process.env;
-const FOURSQUARE_API_KEY = env.FOURSQUARE_API_KEY || 'WAYRDBNFPOVH42C03JADZRRTJBB2GPQCZEEUIIFD1BKDZPA2';
+// API Key validation
+const FOURSQUARE_API_KEY = process.env.FOURSQUARE_API_KEY;
+if (!FOURSQUARE_API_KEY) {
+  console.error('ERROR: FOURSQUARE_API_KEY environment variable is required');
+  process.exit(1);
+}
 
 
 app.use(cors());
