@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
-
+const helmet = require('helmet');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -16,6 +16,7 @@ if (!FOURSQUARE_API_KEY) {
 
 
 app.use(cors());
+app.use(helmet());
 
 app.get('/api/foursquare', async (req, res) => {
   const query = req.query.query;
